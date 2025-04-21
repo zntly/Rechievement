@@ -21,9 +21,13 @@ namespace Rechievement
             {
                 Main.Textures.Add(s.name, s);
             });*/
-            Settings.SettingsCache.SetValue("Re-earn Achievements", ModSettings.GetBool("Re-earn Achievements", "synapsium.rechievement"));
-            Settings.SettingsCache.SetValue("Extra Achievements", ModSettings.GetBool("Extra Achievements", "synapsium.rechievement"));
-            Settings.SettingsCache.SetValue("BToS2 Extra Achievements", ModSettings.GetBool("BToS2 Extra Achievements", "synapsium.rechievement"));
+            try
+            {
+                Settings.SettingsCache.SetValue("Re-earn Achievements", ModSettings.GetBool("Re-earn Achievements", "synapsium.rechievement"));
+                Settings.SettingsCache.SetValue("Extra Achievements", ModSettings.GetBool("Extra Achievements", "synapsium.rechievement"));
+                Settings.SettingsCache.SetValue("BToS2 Extra Achievements", ModSettings.GetBool("BToS2 Extra Achievements", "synapsium.rechievement"));
+            }
+            catch { }
         }
     }
 }

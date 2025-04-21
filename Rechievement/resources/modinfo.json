@@ -1,0 +1,9 @@
+{
+  "HarmonyId": "synapsium.rechievement",
+  "DisplayName": "Rechievement",
+  "Authors": [
+    "Synapsium"
+  ],
+  "Description": "Adds extra achievements to obtain alongside allowing you to re-earn achievements you already own",
+  "Version": "1.0.0"
+}
