@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HarmonyX" Version="2.10.1" />
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.10" IncludeAssets="compile" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Reference Include="Assembly-CSharp">
+      <HintPath>lib\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="BetterTOS2">
+      <HintPath>lib\BetterTOS2.dll</HintPath>
+    </Reference>
+    <Reference Include="SalemModLoader">
+      <HintPath>lib\SalemModLoader.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Core">
+      <HintPath>lib\System.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
