@@ -17,13 +17,13 @@ using System.Runtime.CompilerServices;
 
 namespace Rechievement
 {
-    public class Rechievement
+    public class RechievementData
     {
-        public Rechievement() {
+        public RechievementData() {
             allRechievements.Add(this.Name, this);
         }
 
-        public static Dictionary<string, Rechievement> allRechievements = new Dictionary<string, Rechievement>();
+        public static Dictionary<string, RechievementData> allRechievements = new Dictionary<string, RechievementData>();
 
         public string Name = "???";
 

@@ -57,6 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BToS2Compatibility.cs" />
+    <Compile Include="Patches\AchievementAdder.cs" />
     <Compile Include="Rechievement.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="Patches\AchievementPanelPatch.cs" />
@@ -68,7 +69,7 @@
   <ItemGroup>
     <EmbeddedResource Include="resources\images\thumbnail.png" />
     <EmbeddedResource Include="resources\modinfo.json" />
-	<EmbeddedResource Include="resources\assetbundles.rechievement" />
+    <EmbeddedResource Include="resources\assetbundles.rechievement" />
     <EmbeddedResource Include="resources\assetbundles.rechievement_mac" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

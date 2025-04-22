@@ -10,6 +10,7 @@ using Services;
 using SML;
 using UnityEngine;
 using Newtonsoft.Json;
+using HarmonyLib;
 
 namespace Rechievement
 {
@@ -82,7 +83,7 @@ namespace Rechievement
             return sprite;
         }
 
-        public static void ShowRechievement(this Rechievement rechievement)
+        public static void ShowRechievement(this RechievementData rechievement)
         {
             if (rechievement == null || AchievementPanelPatch.achievementPanel == null)
                 return;
@@ -98,12 +99,14 @@ namespace Rechievement
             achievementPanel.items.Add(achievementItem);
         }
 
-        public static void ShowRechievement(string str) => ShowRechievement(Rechievement.allRechievements.GetValue(str, null));
+        public static void ShowRechievement(string str) => ShowRechievement(RechievementData.allRechievements.GetValue(str, null));
 
-        public static Sprite NoneSprite = Service.Game.Roles.GetRoleInfo(Role.NONE).sprite;
+        public static Sprite NoneSprite;
 
         public static Sprite RechievementSprite;
 
         public static Dictionary<string, Sprite> AssetBundleSprites = new Dictionary<string, Sprite>();
+
+        public static Harmony harmonyInstance = new Harmony("synapsium.rechievement.additional");
     }
 }

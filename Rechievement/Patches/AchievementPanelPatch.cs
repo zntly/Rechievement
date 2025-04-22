@@ -1,5 +1,7 @@
 ﻿using HarmonyLib;
 using Game.Achievements;
+using Server.Shared.State;
+using Services;
 
 namespace Rechievement.Patches
 {
@@ -10,6 +12,8 @@ namespace Rechievement.Patches
         [HarmonyPostfix]
         public static void Postfix(AchievementPanel __instance)
         {
+            if (!Utils.NoneSprite)
+                Utils.NoneSprite = Service.Game.Roles.GetRoleInfo(Role.NONE).sprite;
             achievementPanel = __instance;
         }
 
