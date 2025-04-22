@@ -12,20 +12,24 @@ using UnityEngine;
 using TMPro;
 
 using UnityEngine.SocialPlatforms.Impl;
+using Server.Shared.Extensions;
+using System.Runtime.CompilerServices;
 
 namespace Rechievement
 {
     public class Rechievement
     {
         public Rechievement() {
-            Rechievement.allRechievements.Add(this.Name, this);
+            allRechievements.Add(this.Name, this);
         }
+
+        public static Dictionary<string, Rechievement> allRechievements = new Dictionary<string, Rechievement>();
 
         public string Name = "???";
 
         public string Description = "???";
 
-        public Sprite Sprite = Utils.GetRoleSprite(Role.NONE);
+        public Sprite Sprite = Utils.NoneSprite;
 
         public Role Role = Role.NONE;
 
@@ -34,23 +38,5 @@ namespace Rechievement
         public bool Vanilla = true;
 
         public bool BToS2 = true;
-
-        public static void ShowAchievement(Rechievement rechievement)
-        {
-            if (rechievement == null || AchievementPanelPatch.achievementPanel == null)
-                return;
-            AchievementPanel achievementPanel = AchievementPanelPatch.achievementPanel;
-            achievementPanel.isRunning = true;
-            AchievementItem achievementItem = UnityEngine.Object.Instantiate<AchievementItem>(achievementPanel.ItemTemplate, achievementPanel.ItemTemplate.transform.parent);
-            achievementItem.multiplier.gameObject.SetActive(false);
-            achievementItem.title.SetText(rechievement.Name);
-            achievementItem.desciption.SetText(rechievement.Description);
-            achievementItem.roleIcon.sprite = rechievement.Sprite;
-            // achievementItem.townPointIcon.sprite = Rechievement.rechievementIcon;
-            achievementItem.gameObject.SetActive(true);
-            achievementPanel.items.Add(achievementItem);
-        }
-
-        public static Dictionary<string, Rechievement> allRechievements = new Dictionary<string, Rechievement>();
     }
 }

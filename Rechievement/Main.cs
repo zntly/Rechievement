@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Server.Shared.Extensions;
 using SalemModLoaderUI;
+using UnityEngine.UIElements;
 
 namespace Rechievement
 {
@@ -16,11 +17,14 @@ namespace Rechievement
         public void Start()
         {
             Console.WriteLine("i'm rechieving it");
-            /*AssetBundle assetBundleFromResources = FromAssetBundle.GetAssetBundleFromResources("Rechievement.resources.assetbundles.rechievement", Assembly.GetExecutingAssembly());
-            assetBundleFromResources.LoadAllAssets<Texture2D>().ForEach(delegate (Texture2D s)
+            AssetBundle assetBundleFromResources = FromAssetBundle.GetAssetBundleFromResources("Rechievement.resources.assetbundles.rechievement", Assembly.GetExecutingAssembly());
+            assetBundleFromResources.LoadAllAssets<Texture2D>().ForEach(delegate (Texture2D texture2D)
             {
-                Main.Textures.Add(s.name, s);
-            });*/
+                Sprite sprite = Sprite.Create(texture2D, new Rect(0f, 0f, texture2D.width, texture2D.height), new Vector2(texture2D.width / 2, texture2D.height / 2));
+                if (texture2D.name == "Rechievement")
+                    Utils.RechievementSprite = sprite;
+                Utils.AssetBundleSprites.Add(texture2D.name, sprite);
+            });
             try
             {
                 Settings.SettingsCache.SetValue("Re-earn Achievements", ModSettings.GetBool("Re-earn Achievements", "synapsium.rechievement"));
