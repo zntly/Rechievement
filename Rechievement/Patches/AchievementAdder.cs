@@ -101,7 +101,9 @@ namespace Rechievement.Patches
             { Role.MAYOR, Mayor },
             { Role.MONARCH, Monarch },
             { Role.RETRIBUTIONIST, Retributionist },
-            { Role.SEER, Seer }
+            { Role.SEER, Seer },
+            { Role.SHERIFF, Sheriff }
+
         };
 
         public static Dictionary<FactionType, Func<IEnumerator>> allFactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
@@ -707,6 +709,55 @@ namespace Rechievement.Patches
                 rechievement.ShowRechievement();
             }
         }
+
+        // Sheriff
+        public static IEnumerator Sheriff()
+        {
+            necessities.SetValue("Suspicious", false);
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(SheriffDetectSuspicious));
+            NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToNight), nameof(SheriffResetSuspicious));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(SheriffDeputyDetectTargetDeath));
+            yield break;
+        }
+
+        public static void SheriffDetectSuspicious(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.SHERIFF_SUSPICIOUS)
+                {
+                    necessities.SetValue("Suspicious", true);
+                }
+            }
+        }
+
+        public static void SheriffResetSuspicious() => necessities.SetValue("Suspicious", false);
+
+        public static void SheriffDeputyDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && (bool)necessities.GetValue("Suspicious") && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Keeping the Peace", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Keeping the Peace",
+                        Sprite = Utils.GetRoleSprite(Role.SHERIFF),
+                        Description = "Witness a player being shot by a Deputy the day after you find them suspicious",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+
         // Faction Coroutines
 
         // Global Coroutines
