@@ -102,8 +102,13 @@ namespace Rechievement.Patches
             { Role.MONARCH, Monarch },
             { Role.RETRIBUTIONIST, Retributionist },
             { Role.SEER, Seer },
-            { Role.SHERIFF, Sheriff }
-
+            { Role.SHERIFF, Sheriff },
+            { Role.SPY, Spy },
+            { Role.TAVERNKEEPER, TavernKeeper },
+            { Role.TRAPPER, Trapper },
+            { Role.TRICKSTER, Trickster },
+            { Role.VETERAN, Veteran },
+            { Role.VIGILANTE, Vigilante }
         };
 
         public static Dictionary<FactionType, Func<IEnumerator>> allFactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
@@ -755,6 +760,293 @@ namespace Rechievement.Patches
                     RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
                 }
                 rechievement.ShowRechievement();
+            }
+        }
+        
+        // Spy
+        public static IEnumerator Spy()
+        {
+            necessities.SetValue("Bug Index", -1);
+            necessities.SetValue("Bug Results", new List<List<Role>>());
+            necessities.SetValue("Saw Town", false);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(SpyBugCounting));
+            NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(SpyAchievementCheck));
+            yield break;
+        }
+
+        public static void SpyBugCounting(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.SPY_BUG_WAS_TRIGGERED)
+                {
+                    int bugIndex = (int)necessities.GetValue("Bug Index");
+                    List<List<Role>> bugResults = (List<List<Role>>)necessities.GetValue("Bug Results");
+                    bugResults.Add(new List<Role>());
+                    necessities.SetValue("Bug Index", bugIndex + 1);
+                    necessities.SetValue("Bug Results", bugResults);
+                } else if ((int)necessities.GetValue("Bug Index", -1) > -1 && (chatLog.messageId == GameFeedbackMessage.INVESTIGATOR_PERCEPTION_SAW_VISITOR_WITH_ROLE || (Utils.IsBTOS2() && chatLog.messageId == (GameFeedbackMessage)1081)))
+                {
+                    if (!chatLog.role1.IsTownAligned())
+                    {
+                        int bugIndex = (int)necessities.GetValue("Bug Index");
+                        List<List<Role>> bugResults = (List<List<Role>>)necessities.GetValue("Bug Results");
+                        bugResults[bugIndex].Add(chatLog.role1);
+                        necessities.SetValue("Bug Results", bugResults);
+                    } else
+                    {
+                        necessities.SetValue("Saw Town", true);
+                    }
+                }
+            }
+        }
+        public static void SpyAchievementCheck()
+        {
+            List<List<Role>> bugResults = (List<List<Role>>)necessities.GetValue("Bug Results");
+            bool threeEvilsVisited = false;
+            foreach (List<Role> roles in bugResults)
+                if (!threeEvilsVisited && roles.Count >= 3)
+                    threeEvilsVisited = true;
+            if (threeEvilsVisited)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("High-Profile Target", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "High-Profile Target",
+                        Sprite = Utils.GetRoleSprite(Role.SPY),
+                        Description = "See 3 or more evil roles visit one player",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            if ((bool)necessities.GetValue("Saw Town", false))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Green Herring", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Green Herring",
+                        Sprite = Utils.GetRoleSprite(Role.SPY),
+                        Description = "See a Town role visit a bug",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            necessities.SetValue("Bug Index", -1);
+            necessities.SetValue("Bug Results", new List<List<Role>>());
+            necessities.SetValue("Saw Town", false);
+        }
+
+        // Tavern Keeper
+        public static IEnumerator TavernKeeper()
+        {
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(TavernKeeperDetectRoleblock));
+            yield break;
+        }
+        public static void TavernKeeperDetectRoleblock(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.ROLEBLOCKED_BUT_IMMUNE)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Too Drunk to Get Drunk", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Too Drunk to Get Drunk",
+                            Sprite = Utils.GetRoleSprite(Role.TAVERNKEEPER),
+                            Description = "Have someone attempt to roleblock you",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+
+        // Trapper
+        public static IEnumerator Trapper()
+        {
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(TrapperDetectJinx));
+            yield break;
+        }
+        public static void TrapperDetectJinx(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.TRAP_TRIGGERED_BY_VISITOR_WITH_ROLE && chatLog.role1 == Role.JINX)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Stray Cat", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Stray Cat",
+                            Sprite = Utils.GetRoleSprite(Role.TRAPPER),
+                            Description = "See Jinx visit your Trap",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+
+        // Trickster
+        public static IEnumerator Trickster()
+        {
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(TricksterDetectAbsorbedVigilante));
+            yield break;
+        }
+        public static void TricksterDetectAbsorbedVigilante(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if ((chatLog.messageId == GameFeedbackMessage.YOU_HAVE_STOLEN_THE_ATTACK_OF_X || Utils.IsBTOS2() && chatLog.messageId == (GameFeedbackMessage)1065) && chatLog.role1 == Role.VIGILANTE)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Hippity Hoppity", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Hippity Hoppity",
+                            Sprite = Utils.GetRoleSprite(Role.VIGILANTE),
+                            Description = "Absorb a Vigilante’s Attack",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+
+        // Veteran
+        public static IEnumerator Veteran()
+        {
+            necessities.SetValue("Shot Visitor", false);
+            NewPostfix(typeof(ChatDecoder), nameof(ChatDecoder.Encode), nameof(VeteranCheckIfCalledTPLO));
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(VeteranAlertPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(VeteranDetectShotVisitor));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(VeteranCheckAchievement));
+            yield break;
+        }
+
+        public static void VeteranCheckIfCalledTPLO(ChatLogMessage chatLogMessage)
+        {
+            if (Service.Game.Sim.simulation.observations.gameInfo.Data.playPhase != PlayPhase.FIRST_DISCUSSION)
+                return;
+            ChatLogChatMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogChatMessageEntry;
+            if (chatLog.speakerId == Service.Game.Sim.simulation.myPosition && (chatLog.message.ToLower().Contains("tplo") || chatLog.message.ToLower().Contains("tp/lo")))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("The Classic", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "The Classic",
+                        Sprite = Utils.GetRoleSprite(Role.VETERAN),
+                        Description = "Let the demons win",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+
+        public static void VeteranAlertPatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
+            { 
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.SpecialAbility)
+                    necessities.SetValue("Current Target", chatLog.bIsCancel ? -1 : 0);
+            }
+        }
+
+        public static void VeteranDetectShotVisitor(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.VETERAN_SHOT_VISITOR)
+                    necessities.SetValue("Shot Visitor", true);
+            }
+        }
+
+        public static void VeteranCheckAchievement()
+        {
+            if (!(bool)necessities.GetValue("Shot Visitor", false) && (int)necessities.GetValue("Current Target", -1) != -1)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Swing and a Miss", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Swing and a Miss",
+                        Sprite = Utils.GetRoleSprite(Role.VETERAN),
+                        Description = "Have no visitors to your Alert",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            necessities.SetValue("Shot Visitor", false);
+            necessities.SetValue("Current Target", -1);
+        }
+
+        // Vigilante
+        public static IEnumerator Vigilante()
+        {
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(VigilanteDetectDefense));
+            yield break;
+        }
+        public static void VigilanteDetectDefense(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.DEFENSE_STRONGER_THAN_ATTACK)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Bulletproof Flesh", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Bulletproof Flesh",
+                            Sprite = Utils.GetRoleSprite(Role.VIGILANTE),
+                            Description = "Shoot someone with defense",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
             }
         }
 
