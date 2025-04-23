@@ -18,6 +18,7 @@ using Game.Interface;
 using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 using Server.Shared.State.Chat;
 using Game.Chat.Decoders;
+using UnityEngine.UIElements;
 
 namespace Rechievement.Patches
 {
@@ -42,15 +43,11 @@ namespace Rechievement.Patches
                     StartCoroutine(roleCoroutine.Invoke());
                 if (allFactionCoroutines.TryGetValue(faction, out factionCoroutine))
                     StartCoroutine(factionCoroutine.Invoke());
+                foreach (Func<IEnumerator> func in globalCoroutines)
+                    StartCoroutine(func.Invoke());
                 MethodInfo mOriginal = AccessTools.Method(typeof(RoleCardPanel), nameof(RoleCardPanel.HandleOnMyIdentityChanged));
                 MethodInfo mPostfix = AccessTools.Method(typeof(AchievementAdder), nameof(IdentityChangePatch));
                 IdentityPatch = Utils.harmonyInstance.Patch(mOriginal, null, new HarmonyMethod(mPostfix));
-                if (AchievementPanelPatch.achievementPanel == null)
-                    try
-                    {
-                        AchievementPanelPatch.achievementPanel = GameObject.Find("Hud/AchivementsElementsUI(Clone)/MainCanvasGroup/AchievementPanel").GetComponent<AchievementPanel>();
-                    }
-                    catch { }
             }
             else if (gameInfo.gamePhase == GamePhase.RESULTS && gameInfo.resultsPhase == ResultsPhase.WRAP_UP)
             {
@@ -81,12 +78,12 @@ namespace Rechievement.Patches
                     StartCoroutine(roleCoroutine.Invoke());
                 if (allFactionCoroutines.TryGetValue(faction, out factionCoroutine))
                     StartCoroutine(factionCoroutine.Invoke());
+                foreach (Func<IEnumerator> func in globalCoroutines)
+                    StartCoroutine(func.Invoke());
             }
         }
 
         public static MethodInfo IdentityPatch;
-
-        public static AchievementPanel achievementPanel;
 
         public static List<Coroutine> activeCoroutines = new List<Coroutine>();
 
@@ -96,15 +93,25 @@ namespace Rechievement.Patches
         {
             { Role.ADMIRER, Admirer },
             { Role.AMNESIAC, Amnesiac },
-            { Role.BODYGUARD, Bodyguard }
+            { Role.BODYGUARD, Bodyguard },
+            { Role.CLERIC, Cleric },
+            { Role.CORONER, Coroner },
+            { Role.DEPUTY, Deputy },
+            { Role.INVESTIGATOR, Investigator },
+            { Role.MAYOR, Mayor },
+            { Role.MONARCH, Monarch },
+            { Role.RETRIBUTIONIST, Retributionist },
+            { Role.SEER, Seer }
         };
 
         public static Dictionary<FactionType, Func<IEnumerator>> allFactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
         {
-            {
-                FactionType.NONE,
-                Default
-            }
+            { FactionType.NONE, Default }
+        };
+
+        public static List<Func<IEnumerator>> globalCoroutines = new List<Func<IEnumerator>>
+        {
+            WagaBabaBobo
         };
 
         public static Dictionary<string, object> necessities = new Dictionary<string, object>();
@@ -185,7 +192,7 @@ namespace Rechievement.Patches
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
-                if (chatLog.messageId == GameFeedbackMessage.ROLEBLOCKED || chatLog.messageId == GameFeedbackMessage.JAILED_TARGET || chatLog.messageId == GameFeedbackMessage.ABILITY_FAILED_DUE_TO_AN_UNKNOWN_OBSTACLE || chatLog.messageId == GameFeedbackMessage.CANNOT_USE_ABILITY_WHILE_INSANE)
+                if (chatLog.messageId == GameFeedbackMessage.ROLEBLOCKED || chatLog.messageId == GameFeedbackMessage.JAILED_TARGET || chatLog.messageId == GameFeedbackMessage.ABILITY_FAILED_DUE_TO_AN_UNKNOWN_OBSTACLE || chatLog.messageId == GameFeedbackMessage.CANNOT_USE_ABILITY_WHILE_INSANE || chatLog.messageId == GameFeedbackMessage.WITCH_CONTROLLED || chatLog.messageId == GameFeedbackMessage.DID_NOT_PERFORM_NIGHT_ABILITY)
                     necessities.SetValue("Current Target", -1);
             }
         }
@@ -202,8 +209,8 @@ namespace Rechievement.Patches
         {
             if (!Utils.IsBTOS2())
             {
-                MethodInfo proposalStartPatch = NewPostfix(typeof(ProposalCinematicPlayer), nameof(ProposalCinematicPlayer.HandleProposalMessage), nameof(ProposalMessagePatch));
-                MethodInfo proposalEndPatch = NewPostfix(typeof(ProposalCinematicPlayer), nameof(ProposalCinematicPlayer.Cleanup), nameof(ProposalCleanupPatch));
+                NewPostfix(typeof(ProposalCinematicPlayer), nameof(ProposalCinematicPlayer.HandleProposalMessage), nameof(ProposalMessagePatch));
+                NewPostfix(typeof(ProposalCinematicPlayer), nameof(ProposalCinematicPlayer.Cleanup), nameof(ProposalCleanupPatch));
             }
             yield break;
         }
@@ -221,7 +228,7 @@ namespace Rechievement.Patches
             {
                 if (Pepper.GetDiscussionPlayerRoleIfKnown((int)necessities.GetValue("Proposed To", -1)) == Role.DOOMSAYER)
                 {
-                    MethodInfo factionWinPatch = NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(AdmirerFactionWinPatch));
+                    NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(AdmirerFactionWinPatch));
                 }
             }
         }
@@ -236,7 +243,7 @@ namespace Rechievement.Patches
                     rechievement = new RechievementData
                     {
                         Name = "Written in the Stars",
-                        Sprite = Utils.GetRoleSprite(Role.ADMIRER),
+                        Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite
                         Description = "Propose to a Doomsayer and win the game",
                         Vanilla = true,
                         BToS2 = false
@@ -251,7 +258,7 @@ namespace Rechievement.Patches
         public static IEnumerator Amnesiac()
         {
             Debug.LogWarning("AMNE ------------------");
-            MethodInfo factionWinPatch = NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(AmnesiacFactionWinPatch));
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(AmnesiacFactionWinPatch));
             yield break;
         }
         public static void AmnesiacFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
@@ -280,9 +287,9 @@ namespace Rechievement.Patches
         public static IEnumerator Bodyguard()
         {
             Debug.LogWarning("BG -------------------------");
-            MethodInfo targetingPatch = NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
-            MethodInfo impededPatch = NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
-            MethodInfo detectTargetDeath = NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(BodyguardDetectTargetDeath));
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(BodyguardDetectTargetDeath));
             yield break;
         }
 
@@ -305,6 +312,432 @@ namespace Rechievement.Patches
                     RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
                 }
                 rechievement.ShowRechievement();
+            }
+        }
+
+        // Cleric
+        public static IEnumerator Cleric()
+        {
+            if (Service.Game.Sim.simulation.roleDeckBuilder.Data.bannedRoles.Contains(Role.CLERIC) && Service.Game.Sim.simulation.observations.gameInfo.Data.playPhase == PlayPhase.FIRST_DAY)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("You Shouldn't Be Here", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "You Shouldn't Be Here",
+                        Sprite = Utils.GetRoleSprite(Role.CLERIC),
+                        Description = "Spawn as Cleric while it is banned from spawning",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            yield break;
+        }
+
+        // Coroner
+        public static IEnumerator Coroner()
+        {
+            necessities.SetValue("Killing Townies", new List<Role> { Role.BODYGUARD, Role.CRUSADER, Role.TRAPPER, Role.VIGILANTE, Role.VETERAN, Role.TRICKSTER, Role.DEPUTY, Role.PROSECUTOR });
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(AutopsyCheck));
+            yield break;
+        }
+
+        public static void AutopsyCheck(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.CORONER_PERFORMED_AUTOPSY && chatLog.role1.IsTownAligned())
+                {
+                    List<Role> theList = (List<Role>)necessities.GetValue("Killing Townies");
+                    if (!theList.Contains(chatLog.role1))
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Ghoulish Trickery", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Ghoulish Trickery",
+                                Sprite = Utils.GetRoleSprite(Role.CORONER),
+                                Description = "Find a Town role that cannot kill on your Autopsy",
+                                Vanilla = true,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+
+        // Deputy
+        public static IEnumerator Deputy()
+        {
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(DeputyTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(DeputyRemoveTargetOnMiss));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(DeputyDetectTargetDeath));
+            yield break;
+        }
+
+        public static void DeputyTargetingPatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
+            {
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.SpecialAbility)
+                    necessities.SetValue("Deputy Target", chatLog.bIsCancel ? -1 : chatLog.playerNumber1);
+            }
+        }
+
+        public static void DeputyRemoveTargetOnMiss(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.DEPUTY_SHOT_FAILED)
+                    necessities.SetValue("Deputy Target", -1);
+            }
+        }
+
+        public static void DeputyDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (chatLog.killRecord.isDay && currentFaction == FactionType.TOWN && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Deputy Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT) && chatLog.killRecord.playerRole.IsTownAligned() && chatLog.killRecord.playerFaction == FactionType.TOWN)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Framed Fatality", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Framed Fatality",
+                        Sprite = Utils.GetRoleSprite(Role.DEPUTY),
+                        Description = "Shoot a Town member as a Town-aligned Deputy",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+
+        // Investigator
+        public static IEnumerator Investigator()
+        {
+            necessities.SetValue("Total Crimes", 0);
+            necessities.SetValue("Murder", false);
+            necessities.SetValue("Trespassing", false);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(InvestigatorCountCrimes));
+            NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(InvestigatorCheckAchievements));
+            yield break;
+        }
+
+        public static void InvestigatorCountCrimes(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.INVESTIGATOR_FIND_CRIMINAL_EVIDENCE)
+                {
+                    necessities.SetValue("Murder", true);
+                    int totalCrimes = (int)necessities.GetValue("Total Crimes", 0);
+                    necessities.SetValue("Total Crimes", totalCrimes + 1);
+                } else if (chatLog.messageId == GameFeedbackMessage.INVESTIGATOR_GUILTY_OF_TRESPASSING)
+                {
+                    necessities.SetValue("Trespassing", true);
+                    int totalCrimes = (int)necessities.GetValue("Total Crimes", 0);
+                    necessities.SetValue("Total Crimes", totalCrimes + 1);
+                }
+            }
+        }
+
+        public static void InvestigatorCheckAchievements()
+        {
+            if ((bool)necessities.GetValue("Murder", false) && !(bool)necessities.GetValue("Trespassing", false))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Friendly Fire", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Friendly Fire",
+                        Sprite = Utils.GetRoleSprite(Role.INVESTIGATOR),
+                        Description = "Find someone to be guilty of Murder, but not Trespassing",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            if ((int)necessities.GetValue("Total Crimes", 0) >= 12)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("A Crime a Dozen", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "A Crime a Dozen",
+                        Sprite = Utils.GetRoleSprite(Role.INVESTIGATOR),
+                        Description = "Find 12 crimes in one game",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            necessities.SetValue("Murder", false);
+            necessities.SetValue("Trespassing", false);
+        }
+
+        // Mayor
+        public static IEnumerator Mayor()
+        {
+            NewPostfix(typeof(GameSimulation), nameof(GameSimulation.HandleOnGameInfoChanged), nameof(MayorCheckVotes));
+            yield break;
+        }
+
+        public static void MayorCheckVotes()
+        {
+            if (Service.Game.Sim.simulation.observations.playerVotingObservations.GetElement(Service.Game.Sim.simulation.myPosition).Data.voteWeight >= 5)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("I Love Democracy", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "I Love Democracy",
+                        Sprite = Utils.GetRoleSprite(Role.MAYOR),
+                        Description = "Accumulate 5x voting power",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+
+        // Monarch
+        public static IEnumerator Monarch()
+        {
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(MonarchDetectTargetDeath));
+            yield break;
+        }
+        public static void MonarchDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (!chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Late Inauguration", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Late Inauguration",
+                        Sprite = Utils.GetRoleSprite(Role.MONARCH),
+                        Description = "Attempt to knight someone who dies the same night",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+
+        // Retributionist
+        public static IEnumerator Retributionist()
+        {
+            necessities.SetValue("Using Role", Role.NONE);
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(RaiseTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(RaiseRemoveTargetIfCantUse));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(DeputyRemoveTargetOnMiss));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(RaiseDeputyDetectTargetDeath));
+            yield break;
+        }
+        public static void RaiseTargetingPatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
+            {
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.NightAbility2)
+                {
+                    necessities.SetValue("Using Role", chatLog.targetRoleId);
+                    necessities.SetValue("Current Target", chatLog.bIsCancel ? -1 : chatLog.playerNumber2);
+                }
+            }
+        }
+
+        public static void RaiseRemoveTargetIfCantUse(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.REANIMATE_ROLE_CANT_BE_USED || chatLog.messageId == GameFeedbackMessage.DID_NOT_PERFORM_NIGHT_ABILITY || chatLog.messageId == GameFeedbackMessage.ABILITY_FAILED_DUE_TO_AN_UNKNOWN_OBSTACLE)
+                {
+                    necessities.SetValue("Using Role", Role.NONE);
+                    necessities.SetValue("Current Target", -1);
+                }
+            }
+        }
+
+        public static void RaiseDeputyDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Death Noon", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Death Noon",
+                        Sprite = Utils.GetRoleSprite(Role.RETRIBUTIONIST),
+                        Description = "Resurrect a Deputy and kill someone",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+
+        // Seer
+        public static IEnumerator Seer()
+        {
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(SeerTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(SeerRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(MayorRevealCinematicPlayer), nameof(MayorRevealCinematicPlayer.Init), nameof(SeerDetectMayorReveal));
+            NewPostfix(typeof(TribunalCinematicPlayer), nameof(TribunalCinematicPlayer.Init), nameof(SeerDetectMarshalReveal));
+            NewPostfix(typeof(ProsecutionCinematicPlayer), nameof(ProsecutionCinematicPlayer.Init), nameof(SeerDetectProsecutorReveal));
+            yield break;
+        }
+
+        public static void SeerTargetingPatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
+            {
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.NightAbility)
+                    necessities.SetValue("Intuit", chatLog.bIsCancel ? -1 : chatLog.playerNumber1);
+                else if (chatLog.menuChoiceType == MenuChoiceType.NightAbility2)
+                    necessities.SetValue("Gaze", chatLog.bIsCancel ? -1 : chatLog.playerNumber2);
+            }
+        }
+
+        public static void SeerRemoveTargetIfImpededPatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.ROLEBLOCKED || chatLog.messageId == GameFeedbackMessage.JAILED_TARGET || chatLog.messageId == GameFeedbackMessage.ABILITY_FAILED_DUE_TO_AN_UNKNOWN_OBSTACLE || chatLog.messageId == GameFeedbackMessage.CANNOT_USE_ABILITY_WHILE_INSANE || chatLog.messageId == GameFeedbackMessage.WITCH_CONTROLLED || chatLog.messageId == GameFeedbackMessage.DID_NOT_PERFORM_NIGHT_ABILITY)
+                {
+                    necessities.SetValue("Intuit", -1);
+                    necessities.SetValue("Gaze", -1);
+                }
+            }
+        }
+        public static void SeerDetectMayorReveal(MayorRevealCinematicPlayer __instance)
+        {
+            if ((__instance.roleRevealCinematic.playerPosition == (int)necessities.GetValue("Intuit", -1) || __instance.roleRevealCinematic.playerPosition == (int)necessities.GetValue("Gaze", -1)) && (int)necessities.GetValue("Intuit", -1) != -1 && (int)necessities.GetValue("Gaze", -1) != -1)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Simple", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Simple",
+                        Sprite = Utils.GetRoleSprite(Role.SEER),
+                        Description = "Witness a player publicly reveal as Town Power the day after you compare them",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        public static void SeerDetectMarshalReveal(TribunalCinematicPlayer __instance)
+        {
+            if ((__instance.roleRevealCinematic.playerPosition == (int)necessities.GetValue("Intuit", -1) || __instance.roleRevealCinematic.playerPosition == (int)necessities.GetValue("Gaze", -1)) && (int)necessities.GetValue("Intuit", -1) != -1 && (int)necessities.GetValue("Gaze", -1) != -1)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Simple", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Simple",
+                        Sprite = Utils.GetRoleSprite(Role.SEER),
+                        Description = "Witness a player publicly reveal as Town Power the day after you compare them",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        public static void SeerDetectProsecutorReveal(ProsecutionCinematicPlayer __instance)
+        {
+            if ((__instance.prosecutionCinematic.prosecutorPostion == (int)necessities.GetValue("Intuit", -1) || __instance.prosecutionCinematic.prosecutorPostion == (int)necessities.GetValue("Gaze", -1)) && (int)necessities.GetValue("Intuit", -1) != -1 && (int)necessities.GetValue("Gaze", -1) != -1)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Simple", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Simple",
+                        Sprite = Utils.GetRoleSprite(Role.SEER),
+                        Description = "Witness a player publicly reveal as Town Power the day after you compare them",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Faction Coroutines
+
+        // Global Coroutines
+        public static IEnumerator WagaBabaBobo()
+        {
+            NewPostfix(typeof(ChatDecoder), nameof(ChatDecoder.Encode), nameof(CheckIfSaidWagaBabaBobo));
+            yield break;
+        }
+
+        public static void CheckIfSaidWagaBabaBobo(ChatLogMessage chatLogMessage)
+        {
+            ChatLogChatMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogChatMessageEntry;
+            if (Service.Game.Sim.simulation.observations.roleAlteringEffectsObservation.Data.bIsJailing || Service.Game.Sim.simulation.observations.roleAlteringEffectsObservation.Data.bIsJailed)
+            {
+                if (chatLog.speakerId != ChatLogChatMessageEntry.JAILOR_SPEAKING_ID && chatLog.message.ToLower().Contains("waga baba bobo"))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("waga baba bobo", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "waga baba bobo",
+                            Sprite = Utils.GetRoleSprite(Role.JAILOR), // Give Custom Sprite
+                            Description = "waga baba bobo",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
             }
         }
 

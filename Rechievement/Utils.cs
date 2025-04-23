@@ -85,7 +85,15 @@ namespace Rechievement
 
         public static void ShowRechievement(this RechievementData rechievement)
         {
-            if (rechievement == null || AchievementPanelPatch.achievementPanel == null || AchievementAdder.shown.Contains(rechievement))
+            if (rechievement == null || AchievementAdder.shown.Contains(rechievement))
+                return;
+            if (AchievementPanelPatch.achievementPanel == null)
+                try
+                {
+                    AchievementPanelPatch.achievementPanel = GameObject.Find("Hud/AchivementsElementsUI(Clone)/MainCanvasGroup/AchievementPanel").GetComponent<AchievementPanel>();
+                }
+                catch { }
+            if (AchievementPanelPatch.achievementPanel == null)
                 return;
             AchievementAdder.shown.Add(rechievement);
             AchievementPanel achievementPanel = AchievementPanelPatch.achievementPanel;
