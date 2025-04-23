@@ -25,6 +25,13 @@ namespace Rechievement
                     Utils.RechievementSprite = sprite;
                 Utils.AssetBundleSprites.Add(texture2D.name, sprite);
             });
+            assetBundleFromResources.LoadAllAssets<AudioClip>().ForEach(delegate (AudioClip audio)
+            {
+                if (audio.name == "AchievementGet")
+                    Utils.AchievementGet = audio;
+            });
+            //if (assetBundleFromResources != null)
+            //    assetBundleFromResources.Unload(false);
             try
             {
                 Settings.SettingsCache.SetValue("BToS2 Extra Achievements", ModSettings.GetBool("BToS2 Extra Achievements", "synapsium.rechievement"));

@@ -106,6 +106,7 @@ namespace Rechievement
             achievementItem.townPointIcon.sprite = RechievementSprite;
             achievementItem.gameObject.SetActive(true);
             achievementPanel.items.Add(achievementItem);
+            Service.Home.AudioService.audioController_.EffectsSource.PlayOneShot(AchievementGet);
         }
 
         public static void ShowRechievement(string str) => ShowRechievement(RechievementData.allRechievements.GetValue(str, null));
@@ -115,6 +116,8 @@ namespace Rechievement
         public static Sprite RechievementSprite;
 
         public static Dictionary<string, Sprite> AssetBundleSprites = new Dictionary<string, Sprite>();
+
+        public static AudioClip AchievementGet;
 
         public static Harmony harmonyInstance = new Harmony("synapsium.rechievement.additional");
     }
