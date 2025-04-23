@@ -37,6 +37,7 @@ namespace Rechievement.Patches
                 currentFaction = faction;
                 Func<IEnumerator> roleCoroutine;
                 Func<IEnumerator> factionCoroutine;
+                Debug.LogWarning(role);
                 if (allRoleCoroutines.TryGetValue(role, out roleCoroutine))
                     StartCoroutine(roleCoroutine.Invoke());
                 if (allFactionCoroutines.TryGetValue(faction, out factionCoroutine))
@@ -44,16 +45,25 @@ namespace Rechievement.Patches
                 MethodInfo mOriginal = AccessTools.Method(typeof(RoleCardPanel), nameof(RoleCardPanel.HandleOnMyIdentityChanged));
                 MethodInfo mPostfix = AccessTools.Method(typeof(AchievementAdder), nameof(IdentityChangePatch));
                 IdentityPatch = Utils.harmonyInstance.Patch(mOriginal, null, new HarmonyMethod(mPostfix));
+                if (AchievementPanelPatch.achievementPanel == null)
+                    try
+                    {
+                        AchievementPanelPatch.achievementPanel = GameObject.Find("Hud/AchivementsElementsUI(Clone)/MainCanvasGroup/AchievementPanel").GetComponent<AchievementPanel>();
+                    }
+                    catch { }
             }
-            else if (gameInfo.gamePhase == GamePhase.NONE)
+            else if (gameInfo.gamePhase == GamePhase.RESULTS && gameInfo.resultsPhase == ResultsPhase.WRAP_UP)
             {
                 ClearCoroutines();
                 ClearPatches();
                 Utils.harmonyInstance.Unpatch(AccessTools.Method(typeof(RoleCardPanel), nameof(RoleCardPanel.HandleOnMyIdentityChanged)), IdentityPatch);
                 IdentityPatch = null;
                 necessities.Clear();
+                shown.Clear();
             }
         }
+
+        public static List<RechievementData> shown = new List<RechievementData>();
 
         public static void IdentityChangePatch(PlayerIdentityData playerIdentityData)
         {
@@ -166,8 +176,8 @@ namespace Rechievement.Patches
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
-                if (chatLog.playerNumber1 == Pepper.GetMyPosition() && chatLog.menuChoiceType == MenuChoiceType.NightAbility)
-                    necessities.SetValue("Current Target", chatLog.bIsCancel ? -1 : chatLog.playerNumber2);
+                if (chatLog.menuChoiceType == MenuChoiceType.NightAbility)
+                    necessities.SetValue("Current Target", chatLog.bIsCancel ? -1 : chatLog.playerNumber1);
             }
         }
         public static void GeneralRemoveTargetIfImpededPatch(ChatLogMessage chatLogMessage)
@@ -219,58 +229,82 @@ namespace Rechievement.Patches
         public static void AdmirerFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
         {
             if (__instance.cinematicData.winningFaction == Service.Game.Sim.simulation.myIdentity.Data.faction)
-                RechievementData.allRechievements.GetValue("Written in the Stars", new RechievementData
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Written in the Stars", out rechievement))
                 {
-                    Name = "Written in the Stars",
-                    Sprite = Utils.GetRoleSprite(Role.ADMIRER),
-                    Description = "Propose to a Doomsayer and win the game",
-                    Vanilla = true,
-                    BToS2 = false
-                }).ShowRechievement();
+                    rechievement = new RechievementData
+                    {
+                        Name = "Written in the Stars",
+                        Sprite = Utils.GetRoleSprite(Role.ADMIRER),
+                        Description = "Propose to a Doomsayer and win the game",
+                        Vanilla = true,
+                        BToS2 = false
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
         }
 
         // Amnesiac
         public static IEnumerator Amnesiac()
         {
+            Debug.LogWarning("AMNE ------------------");
             MethodInfo factionWinPatch = NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(AmnesiacFactionWinPatch));
             yield break;
         }
         public static void AmnesiacFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
         {
+            Debug.LogWarning(__instance.cinematicData.winningFaction == Service.Game.Sim.simulation.myIdentity.Data.faction);
             if (Service.Game.Sim.simulation.myIdentity.Data.role == Role.AMNESIAC && __instance.cinematicData.winningFaction == Service.Game.Sim.simulation.myIdentity.Data.faction)
-                RechievementData.allRechievements.GetValue("What Happened?", new RechievementData
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("What Happened?", out rechievement))
                 {
-                    Name = "What Happened?",
-                    Sprite = Utils.GetRoleSprite(Role.AMNESIAC),
-                    Description = "Win without remembering a role",
-                    Vanilla = true,
-                    BToS2 = true
-                }).ShowRechievement();
+                    rechievement = new RechievementData
+                    {
+                        Name = "What Happened?",
+                        Sprite = Utils.GetRoleSprite(Role.AMNESIAC),
+                        Description = "Win without remembering a role",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
         }
 
         // Bodyguard
         public static IEnumerator Bodyguard()
         {
+            Debug.LogWarning("BG -------------------------");
             MethodInfo targetingPatch = NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
             MethodInfo impededPatch = NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
-            MethodInfo detectTargetDeath = NewPostfix(typeof(WhoDiedRoleDecoder), nameof(WhoDiedRoleDecoder.Encode), nameof(BodyguardDetectTargetDeath));
+            MethodInfo detectTargetDeath = NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(BodyguardDetectTargetDeath));
             yield break;
         }
 
         public static void BodyguardDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (!chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1))
             {
-                ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
-                if (!chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1))
-                    RechievementData.allRechievements.GetValue("Mission Failed", new RechievementData
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Mission Failed", out rechievement))
+                {
+                    rechievement = new RechievementData
                     {
                         Name = "Mission Failed",
                         Sprite = Utils.GetRoleSprite(Role.BODYGUARD),
                         Description = "Have your target die while protecting them",
                         Vanilla = true,
                         BToS2 = true
-                    }).ShowRechievement();
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
             }
         }
 

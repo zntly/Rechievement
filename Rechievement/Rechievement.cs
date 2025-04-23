@@ -20,7 +20,6 @@ namespace Rechievement
     public class RechievementData
     {
         public RechievementData() {
-            allRechievements.Add(this.Name, this);
         }
 
         public static Dictionary<string, RechievementData> allRechievements = new Dictionary<string, RechievementData>();
