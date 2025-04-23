@@ -780,7 +780,7 @@ namespace Rechievement.Patches
                         rechievement = new RechievementData
                         {
                             Name = "waga baba bobo",
-                            Sprite = Utils.GetRoleSprite(Role.JAILOR), // Give Custom Sprite
+                            Sprite = Utils.GetAssetBundleSprite("WagaBabaBobo"),
                             Description = "waga baba bobo",
                             Vanilla = true,
                             BToS2 = true
