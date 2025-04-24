@@ -11,6 +11,7 @@ using SML;
 using UnityEngine;
 using Newtonsoft.Json;
 using HarmonyLib;
+using BetterTOS2.Observations;
 
 namespace Rechievement
 {
@@ -42,6 +43,23 @@ namespace Rechievement
         private static bool IsBTOS2Bypass()
         {
             return BTOS2Exists() && BTOSInfo.IS_MODDED;
+        }
+        public static bool ApocCheck()
+        {
+            bool result;
+            if (!Utils.IsBTOS2())
+            {
+                result = (bool)AchievementAdder.necessities.GetValue("Pestilence", false) || (bool)AchievementAdder.necessities.GetValue("War", false) || (bool)AchievementAdder.necessities.GetValue("Famine", false) || (bool)AchievementAdder.necessities.GetValue("Death", false);
+            }
+            else
+            {
+                result = Utils.InternalApocCheck();
+            }
+            return result;
+        }
+        private static bool InternalApocCheck()
+        {
+            return GameObservationsPatch.musicOverrideObservation.Data.apoc;
         }
 
         // Token: 0x0600002B RID: 43

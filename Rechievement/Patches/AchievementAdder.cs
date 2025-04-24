@@ -53,7 +53,6 @@ namespace Rechievement.Patches
             {
                 ClearCoroutines();
                 ClearPatches();
-                Utils.harmonyInstance.Unpatch(AccessTools.Method(typeof(RoleCardPanel), nameof(RoleCardPanel.HandleOnMyIdentityChanged)), IdentityPatch);
                 IdentityPatch = null;
                 necessities.Clear();
                 shown.Clear();
@@ -68,6 +67,9 @@ namespace Rechievement.Patches
             {
                 ClearCoroutines();
                 ClearPatches();
+                MethodInfo mOriginal = AccessTools.Method(typeof(RoleCardPanel), nameof(RoleCardPanel.HandleOnMyIdentityChanged));
+                MethodInfo mPostfix = AccessTools.Method(typeof(AchievementAdder), nameof(IdentityChangePatch));
+                IdentityPatch = Utils.harmonyInstance.Patch(mOriginal, null, new HarmonyMethod(mPostfix));
                 Role role = playerIdentityData.role;
                 FactionType faction = playerIdentityData.faction;
                 currentRole = role;
@@ -108,7 +110,11 @@ namespace Rechievement.Patches
             { Role.TRAPPER, Trapper },
             { Role.TRICKSTER, Trickster },
             { Role.VETERAN, Veteran },
-            { Role.VIGILANTE, Vigilante }
+            { Role.VIGILANTE, Vigilante },
+            { Role.CONJURER, Conjurer },
+            { Role.COVENLEADER, CovenLeader },
+            { Role.ENCHANTER, Enchanter },
+            { Role.HEXMASTER, HexMaster }
         };
 
         public static Dictionary<FactionType, Func<IEnumerator>> allFactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
@@ -118,7 +124,7 @@ namespace Rechievement.Patches
 
         public static List<Func<IEnumerator>> globalCoroutines = new List<Func<IEnumerator>>
         {
-            WagaBabaBobo
+            WagaBabaBobo, BalancedList
         };
 
         public static Dictionary<string, object> necessities = new Dictionary<string, object>();
@@ -182,6 +188,7 @@ namespace Rechievement.Patches
             foreach (KeyValuePair<MethodInfo, Tuple<Type, string, Type[]>> keyValuePair in harmonyPatches)
                 Unpatch(keyValuePair.Key);
             harmonyPatches.Clear();
+            Utils.harmonyInstance.UnpatchSelf();
         }
 
         // General Patches
@@ -203,13 +210,56 @@ namespace Rechievement.Patches
                     necessities.SetValue("Current Target", -1);
             }
         }
-
         public static void GeneralRemoveTargetStartOfDiscussion(GameInfo gameInfo)
         {
             if (gameInfo.gamePhase == GamePhase.PLAY && gameInfo.playPhase == PlayPhase.DISCUSSION)
                 necessities.SetValue("Current Target", -1);
         }
-
+        public static void GeneralNecronomiconTargetingPatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION && Service.Game.Sim.simulation.observations.roleCardObservation.Data.powerUp == POWER_UP_TYPE.NECRONOMICON)
+            {
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.NightAbility)
+                    necessities.SetValue("Necronomicon Target", chatLog.bIsCancel ? -1 : chatLog.playerNumber1);
+            } else if (chatLogMessage.chatLogEntry.type == ChatType.FACTION_TARGET_SELECTION)
+            {
+                ChatLogFactionTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogFactionTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.NightAbility && chatLog.bHasNecronomicon)
+                    necessities.SetValue("Necronomicon Target", chatLog.bIsCancel ? -1 : chatLog.teammateTargetingPosition1);
+            }
+        }
+        public static void GeneralDetectApocalypse(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.PESTILENCE_HAS_EMERGED)
+                    necessities.SetValue("Pestilence", true);
+                else if (chatLog.messageId == GameFeedbackMessage.WAR_HAS_EMERGED)
+                    necessities.SetValue("War", true);
+                else if (chatLog.messageId == GameFeedbackMessage.FAMINE_HAS_EMERGED)
+                    necessities.SetValue("Famine", true);
+                else if (chatLog.messageId == GameFeedbackMessage.DEATH_HAS_EMERGED)
+                    necessities.SetValue("Death", true);
+            }
+        }
+        public static void GeneralDetectApocalypseDeath(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
+            {
+                ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+                Role deadRole = chatLog.killRecord.playerRole;
+                if (deadRole == Role.PLAGUEBEARER || deadRole == Role.PESTILENCE)
+                    necessities.SetValue("Pestilence", false);
+                else if (deadRole == Role.BERSERKER || deadRole == Role.WAR)
+                    necessities.SetValue("War", false);
+                else if (deadRole == Role.BAKER || deadRole == Role.FAMINE)
+                    necessities.SetValue("Famine", false);
+                else if (deadRole == Role.DEATH || deadRole == Role.DEATH)
+                    necessities.SetValue("Death", false);
+            }
+        }
         // Role Coroutines
         // Admirer
         public static IEnumerator Admirer()
@@ -1050,9 +1100,257 @@ namespace Rechievement.Patches
             }
         }
 
+        // Conjurer
+        public static IEnumerator Conjurer()
+        {
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralNecronomiconTargetingPatch));
+            NewPostfix(typeof(FactionTargetSelectionDecoder), nameof(FactionTargetSelectionDecoder.Encode), nameof(GeneralNecronomiconTargetingPatch));
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(ConjurerTargetingPatch));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(ConjurerDetectTargetDeath));
+            yield break;
+        }
+        public static void ConjurerTargetingPatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
+            {
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.SpecialAbility)
+                {
+                    necessities.SetValue("Conjurer Target", chatLog.bIsCancel ? -1 : chatLog.playerNumber1);
+                    if (chatLog.playerNumber1 == (int)necessities.GetValue("Necronomicon Target", 16))
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("You Won’t Get Away", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "You Won’t Get Away",
+                                Sprite = Utils.GetRoleSprite(Role.CONJURER),
+                                Description = "Conjure someone the Coven attempted to kill last night",
+                                Vanilla = true,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        public static void ConjurerDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (Utils.IsBTOS2() && chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Conjurer Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.CONJURER_ATTACKED) && chatLog.killRecord.playerRole == BToS2Roles.Jackal && currentFaction != BToS2Factions.Jackal)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("He Deserved It!", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "He Deserved It!",
+                        Sprite = Utils.GetRoleSprite(Role.CONJURER),
+                        Description = "Conjure the Jackal",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+
+        // Coven Leader
+        public static IEnumerator CovenLeader()
+        {
+            necessities.SetValue("Has Retrained", false);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(CovenLeaderDetectRetrain));
+            yield break;
+        }
+        public static void CovenLeaderDetectRetrain(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.ROLE_RETRAIN_ACCEPTED)
+                {
+                    if (chatLog.role1 == Role.VOODOOMASTER)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Metamancer", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Metamancer",
+                                Sprite = Utils.GetRoleSprite(Role.COVENLEADER),
+                                Description = "Retrain someone into a Voodoo Master",
+                                Vanilla = true,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                    if (chatLog.role1 == Role.CONJURER && chatLog.playerNumber1 == Service.Game.Sim.simulation.myPosition && (bool)necessities.GetValue("Has Retrained", false))
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Rock Solid", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Rock Solid",
+                                Sprite = Utils.GetRoleSprite(Role.COVENLEADER),
+                                Description = "Using your last retrain charge, retrain yourself into Conjurer",
+                                Vanilla = true,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                    necessities.SetValue("Has Retrained", true);
+                }
+            }
+        }
+        
+        // Enchanter
+        public static IEnumerator Enchanter()
+        {
+            necessities.SetValue("Current Target", -1);
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(EnchanterAlteratingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(EnchanterDetectTargetDeath));
+            NewPostfix(typeof(GameSimulation), nameof(GameSimulation.HandleOnGameInfoChanged), nameof(EnchanterDetectTargetNotDeath));
+            yield break;
+        }
+        public static void EnchanterAlteratingPatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
+            {
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.SpecialAbility)
+                {
+                    necessities.SetValue("Current Target", chatLog.bIsCancel ? -1 : chatLog.playerNumber1);
+                }
+            }
+        }
+        public static void EnchanterDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target"))
+            {
+                necessities.SetValue("Current Target", -1);
+                if (chatLog.killRecord.playerRole == Role.JESTER)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Clowner", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Clowner",
+                            Sprite = Utils.GetRoleSprite(Role.ENCHANTER),
+                            Description = "Alterate someone as a Jester",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+                if (Service.Game.Sim.simulation.roleDeckBuilder.Data.bannedRoles.Contains(chatLog.killRecord.playerRole))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Forbidden Enchantment", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Forbidden Enchantment",
+                            Sprite = Utils.GetRoleSprite(Role.ENCHANTER),
+                            Description = "Alterate someone as a role that cannot spawn",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+                if (chatLog.killRecord.playerRole == chatLog.killRecord.hiddenPlayerRole)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Let Me Cook?", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Let Me Cook?",
+                            Sprite = Utils.GetRoleSprite(Role.ENCHANTER),
+                            Description = "Alterate someone as their real role",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        public static void EnchanterDetectTargetNotDeath(GameInfo gameInfo)
+        {
+            if (gameInfo.playPhase == PlayPhase.DISCUSSION && (int)necessities.GetValue("Current Target", -1) != -1)
+            {
+                necessities.SetValue("Current Target", -1);
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Torn Paper", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Torn Paper",
+                        Sprite = Utils.GetRoleSprite(Role.ENCHANTER),
+                        Description = "Have your Alterate target survive",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Hex Master
+        public static IEnumerator HexMaster()
+        {
+            if (!Utils.IsBTOS2())
+            {
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectApocalypse));
+                NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(GeneralDetectApocalypseDeath));
+            }
+            NewPostfix(typeof(HexBombCinematicPlayer), nameof(HexBombCinematicPlayer.Init), nameof(HexMasterDetectBomb));
+            yield break;
+        }
+
+        public static void HexMasterDetectBomb()
+        {
+            if (Utils.ApocCheck())
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Skill Issue", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Skill Issue",
+                        Sprite = Utils.GetRoleSprite(Role.HEXMASTER),
+                        Description = "Perform a Hex Bomb while a Horseman of the Apocalypse is alive",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        
         // Faction Coroutines
 
         // Global Coroutines
+
+        // Waga Baba Bobo
         public static IEnumerator WagaBabaBobo()
         {
             NewPostfix(typeof(ChatDecoder), nameof(ChatDecoder.Encode), nameof(CheckIfSaidWagaBabaBobo));
@@ -1082,6 +1380,29 @@ namespace Rechievement.Patches
                     rechievement.ShowRechievement();
                 }
             }
+        }
+
+        // Balanced List
+        public static IEnumerator BalancedList()
+        {
+            if (Service.Game.Sim.simulation.roleDeckBuilder.Data.roles.Contains(Role.PESTILENCE) || Service.Game.Sim.simulation.roleDeckBuilder.Data.roles.Contains(Role.WAR))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Balanced List", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Balanced List",
+                        Sprite = Utils.GetRoleSprite(Role.ANY),
+                        Description = "Witness a Horseman of the Apocalypse transform Day 1",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            yield break;
         }
 
         public static Role currentRole = Role.NONE;
