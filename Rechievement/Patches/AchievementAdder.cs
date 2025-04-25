@@ -18,6 +18,7 @@ using Game.Interface;
 using static MonoMod.Cil.RuntimeILReferenceBag.FastDelegateInvokers;
 using Server.Shared.State.Chat;
 using Game.Chat.Decoders;
+using Game.Tos;
 using UnityEngine.UIElements;
 using Newtonsoft.Json;
 
@@ -95,6 +96,7 @@ namespace Rechievement.Patches
 
         public static Dictionary<Role, Func<IEnumerator>> allRoleCoroutines = new Dictionary<Role, Func<IEnumerator>>
         {
+            // Main Town
             { Role.ADMIRER, Admirer },
             { Role.AMNESIAC, Amnesiac },
             { Role.BODYGUARD, Bodyguard },
@@ -118,6 +120,7 @@ namespace Rechievement.Patches
             { Role.TRICKSTER, Trickster },
             { Role.VETERAN, Veteran },
             { Role.VIGILANTE, Vigilante },
+            // Main Coven
             { Role.CONJURER, Conjurer },
             { Role.COVENLEADER, CovenLeader },
             { Role.DREAMWEAVER, Dreamweaver },
@@ -126,12 +129,22 @@ namespace Rechievement.Patches
             { Role.ILLUSIONIST, Illusionist },
             { Role.JINX, Jinx },
             { Role.MEDUSA, Medusa },
-            { Role.POISONER, Poisoner }
+            { Role.NECROMANCER, Necromancer },
+            { Role.POISONER, Poisoner },
+            { Role.POTIONMASTER, PotionMaster },
+            { Role.RITUALIST, Ritualist },
+            { Role.VOODOOMASTER, VoodooMaster },
+            { Role.WILDLING, Wildling },
+            { Role.WITCH, Witch },
+            // Main Neutrals/Apocalypse
+            { Role.ARSONIST, Arsonist }
         };
 
         public static Dictionary<FactionType, Func<IEnumerator>> allFactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
         {
-            { FactionType.NONE, Default }
+            { FactionType.COVEN, Coven },
+            { FactionType.APOCALYPSE, Apocalypse },
+            { BToS2Factions.Pandora, Pandora }
         };
 
         public static List<Func<IEnumerator>> globalCoroutines = new List<Func<IEnumerator>>
@@ -274,33 +287,36 @@ namespace Rechievement.Patches
                     necessities.SetValue("Death", false);
             }
         }
+        public static void GeneralDetectTownTraitor(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.TOWN_TRAITOR_IS)
+                {
+                    int tt = (int)necessities.GetValue("Town Traitor", -1);
+                    if (tt == -1)
+                        necessities.SetValue("Town Traitor", chatLog.playerNumber1);
+                    else
+                        necessities.SetValue("Town Traitor 2", chatLog.playerNumber1);
+                }
+            }
+        }
         // Role Coroutines
         // Admirer
         public static IEnumerator Admirer()
         {
             if (!Utils.IsBTOS2())
-            {
-                NewPostfix(typeof(ProposalCinematicPlayer), nameof(ProposalCinematicPlayer.HandleProposalMessage), nameof(ProposalMessagePatch));
-                NewPostfix(typeof(ProposalCinematicPlayer), nameof(ProposalCinematicPlayer.Cleanup), nameof(ProposalCleanupPatch));
-            }
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(AdmirerProposalMessagePatch));
             yield break;
         }
-        public static void ProposalMessagePatch(ProposalMessage message)
+        public static void AdmirerProposalMessagePatch(ChatLogMessage chatLogMessage)
         {
-            if (message.status == ProposalStatus.Accepted)
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
-                necessities.SetValue("Accepted", true);
-                necessities.SetValue("Proposed To", message.otherPosition);
-            }
-        }
-        public static void ProposalCleanupPatch()
-        {
-            if ((bool)necessities.GetValue("Accepted", false))
-            {
-                if (Pepper.GetDiscussionPlayerRoleIfKnown((int)necessities.GetValue("Proposed To", -1)) == Role.DOOMSAYER)
-                {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.ADMIRER_PROPOSAL_ACCEPTED_ROLE_REVEAL && chatLog.role1 == Role.DOOMSAYER)
                     NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(AdmirerFactionWinPatch));
-                }
             }
         }
 
@@ -470,7 +486,7 @@ namespace Rechievement.Patches
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
-                if (chatLog.messageId == GameFeedbackMessage.DEPUTY_SHOT_FAILED)
+                if (chatLog.messageId == GameFeedbackMessage.DEPUTY_SHOT_FAILED || (Utils.IsBTOS2() && chatLog.messageId == (GameFeedbackMessage)1101))
                     necessities.SetValue("Deputy Target", -1);
             }
         }
@@ -1761,6 +1777,39 @@ namespace Rechievement.Patches
                 rechievement.ShowRechievement();
             }
         }
+        // Necromancer
+        public static IEnumerator Necromancer()
+        {
+            necessities.SetValue("Using Role", Role.NONE);
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(RaiseTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(RaiseRemoveTargetIfCantUse));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(NecromancerDetectFamine));
+            yield break;
+        }
+        public static void NecromancerDetectFamine(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.DIED_OF_FAMINE && (Role)necessities.GetValue("Using Role", Role.NONE) == Role.FAMINE)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Skin and Bones", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Skin and Bones",
+                            Sprite = Utils.GetRoleSprite(Role.NECROMANCER),
+                            Description = "Resurrect Famine and starve to death",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
         // Poisoner
         public static IEnumerator Poisoner()
         {
@@ -1822,8 +1871,427 @@ namespace Rechievement.Patches
                 rechievement.ShowRechievement();
             }
         }
-        // Faction Coroutines
+        // Potion Master
+        public static IEnumerator PotionMaster()
+        {
+            if (Utils.IsBTOS2())
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(PotionMasterDetectPariah));
+            yield break;
+        }
+        public static void PotionMasterDetectPariah(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == (GameFeedbackMessage)1020 || chatLog.messageId == (GameFeedbackMessage)1030 || chatLog.messageId == (GameFeedbackMessage)1012)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Dubious Alchemy", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Dubious Alchemy",
+                            Sprite = Utils.GetRoleSprite(Role.POTIONMASTER),
+                            Description = "Reveal a Neutral Pariah",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        // Ritualist
+        public static IEnumerator Ritualist()
+        {
+            necessities.SetValue("Ritual", false);
+            necessities.SetValue("Revealed TPow", new List<int>());
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(RitualistDetectRitual));
+            NewPostfix(typeof(MayorRevealCinematicPlayer), nameof(MayorRevealCinematicPlayer.Init), nameof(RitualistDetectMayorReveal));
+            NewPostfix(typeof(TribunalCinematicPlayer), nameof(TribunalCinematicPlayer.Init), nameof(RitualistDetectMarshalReveal));
+            NewPostfix(typeof(ProsecutionCinematicPlayer), nameof(ProsecutionCinematicPlayer.Cleanup), nameof(RitualistDetectProsecutorReveal));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(RitualistDetectTargetDeath));
+            NewPostfix(typeof(GameSimulation), nameof(GameSimulation.HandleOnGameInfoChanged), nameof(RitualistDetectTargetNotDeath));
+            yield break;
+        }
+        public static void RitualistDetectRitual(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.RITUALIST_SUCCESSFUL_ROLE_GUESS)
+                    necessities.SetValue("Ritual", true);
+            }
+        }
+        public static void RitualistDetectMayorReveal(MayorRevealCinematicPlayer __instance)
+        {
+            if (__instance.roleRevealCinematic.playerPosition != -1)
+            {
+                List<int> revealedTPow = (List<int>)necessities.GetValue("Revealed TPow");
+                revealedTPow.Add(__instance.roleRevealCinematic.playerPosition);
+                necessities.SetValue("Revealed TPow", revealedTPow);
+            }
+        }
+        public static void RitualistDetectMarshalReveal(TribunalCinematicPlayer __instance)
+        {
+            if (__instance.roleRevealCinematic.playerPosition != -1)
+            {
+                List<int> revealedTPow = (List<int>)necessities.GetValue("Revealed TPow");
+                revealedTPow.Add(__instance.roleRevealCinematic.playerPosition);
+                necessities.SetValue("Revealed TPow", revealedTPow);
+            }
+        }
+        public static void RitualistDetectProsecutorReveal(ProsecutionCinematicPlayer __instance)
+        {
+            if (__instance.prosecutionCinematic.prosecutorPostion != -1)
+            {
+                List<int> revealedTPow = (List<int>)necessities.GetValue("Revealed TPow");
+                revealedTPow.Add(__instance.prosecutionCinematic.prosecutorPostion);
+                necessities.SetValue("Revealed TPow", revealedTPow);
+            }
+        }
+        public static void RitualistDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (chatLog.killRecord.killedByReasons.Contains(KilledByReason.RITUALIST_ATTACKED))
+            {
+                necessities.SetValue("Ritual", false);
+                bool roleIsTPow = chatLog.killRecord.hiddenPlayerRole.GetSubAlignment() == SubAlignment.POWER && chatLog.killRecord.hiddenPlayerRole.IsTownAligned() && chatLog.killRecord.hiddenPlayerRole != Role.JAILOR && chatLog.killRecord.hiddenPlayerRole != Role.MONARCH || chatLog.killRecord.playerRole.GetSubAlignment() == SubAlignment.POWER && chatLog.killRecord.playerRole.IsTownAligned() && chatLog.killRecord.playerRole != Role.JAILOR && chatLog.killRecord.playerRole != Role.MONARCH && (chatLog.killRecord.hiddenPlayerRole == Role.NONE || chatLog.killRecord.hiddenPlayerRole == Role.HIDDEN);
+                List<int> revealedTPow = (List<int>)necessities.GetValue("Revealed TPow");
+                if (roleIsTPow && !revealedTPow.Contains(chatLog.killRecord.playerId))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("The Price Is Right", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "The Price Is Right",
+                            Sprite = Utils.GetRoleSprite(Role.RITUALIST),
+                            Description = "Perform a successful Blood Ritual on an unrevealed Town Power",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        public static void RitualistDetectTargetNotDeath(GameInfo gameInfo)
+        {
+            if (gameInfo.playPhase == PlayPhase.DISCUSSION && (bool)necessities.GetValue("Ritual", false))
+            {
+                necessities.SetValue("Ritual", false);
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Intentional Game Design", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Intentional Game Design",
+                        Sprite = Utils.GetRoleSprite(Role.RITUALIST),
+                        Description = "Perform a successful Blood Ritual on someone who survives",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Voodoo Master
+        public static IEnumerator VoodooMaster()
+        {
+            necessities.SetValue("Admirer", -1);
+            if (!Utils.IsBTOS2())
+            {
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(VoodooMasterProposalMessagePatch));
+                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(VoodooMasterDetectSilencedAdmirer));
+            }
+            NewPostfix(typeof(ExecutionerLeavesFeatures), nameof(ExecutionerLeavesFeatures.Init), nameof(VoodooMasterDetectSilencedExecutioner));
+            yield break;
+        }
+        public static void VoodooMasterProposalMessagePatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.YOU_ACCEPTED_ADMIRER_PROPOSAL_ROLE_REVEAL)
+                    necessities.SetValue("Admirer", chatLog.playerNumber1);
+            }
+        }
+        public static void VoodooMasterDetectSilencedAdmirer()
+        {
+            if ((int)necessities.GetValue("Admirer", -1) != -1 && Service.Game.Sim.simulation.observations.playerEffects[(int)necessities.GetValue("Admirer", -1)].Data.effects.Contains(EffectType.VOODOOED))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Inaudible Infatuation", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Inaudible Infatuation",
+                        Sprite = Utils.GetRoleSprite(Role.VOODOOMASTER),
+                        Description = "Silence your Admirer",
+                        Vanilla = true,
+                        BToS2 = false
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        public static void VoodooMasterDetectSilencedExecutioner(TrialExecutionerData trialExecutionerData)
+        {
+            if (Service.Game.Sim.simulation.observations.playerEffects[trialExecutionerData.executionEntries[0].executionerId].Data.effects.Contains(EffectType.VOODOOED))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("We'll Take It From Here", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "We'll Take It From Here",
+                        Sprite = Utils.GetRoleSprite(Role.VOODOOMASTER),
+                        Description = "Silence the Executioner, then hang their target",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Wildling
+        public static IEnumerator Wildling()
+        {
+            necessities.SetValue("Whispers", 0);
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(PlayerWhisperDecoder), nameof(PlayerWhisperDecoder.Encode), nameof(WildlingCountWhispers));
+            NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(WildlingDayHandler));
+            yield break;
+        }
+        public static void WildlingCountWhispers(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.WHISPER)
+            {
+                ChatLogWhisperMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhisperMessageEntry;
+                int myPosition = Service.Game.Sim.simulation.myPosition;
+                if (chatLog.speakerId != myPosition && chatLog.targetId != myPosition)
+                {
+                    int whispers = (int)necessities.GetValue("Whispers", 0);
+                    necessities.SetValue("Whispers", whispers + 1);
+                    if (whispers >= 19)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Information Overload", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Information Overload",
+                                Sprite = Utils.GetRoleSprite(Role.WILDLING),
+                                Description = "Overhear 20 whispers in one day",
+                                Vanilla = true,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        public static void WildlingDayHandler() => necessities.SetValue("Whispers", 0);
+        // Witch
+        public static IEnumerator Witch()
+        {
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(SeerTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(SeerRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(WitchControlHandler));
+            yield break;
+        }
+        public static void WitchControlHandler(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.TARGET_IS_ARSONIST && (int)necessities.GetValue("Intuit", -1) == (int)necessities.GetValue("Gaze", -1) && (int)necessities.GetValue("Intuit", -1) != -1)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Taste of Your Own Gasoline", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Taste of Your Own Gasoline",
+                            Sprite = Utils.GetRoleSprite(Role.WITCH),
+                            Description = "Control an Arsonist into dousing themselves",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                } else if (chatLog.messageId.IsBetweenInclusive(GameFeedbackMessage.TARGET_IS_CONJURER, GameFeedbackMessage.TARGET_IS_WITCH) || Utils.IsBTOS2() && chatLog.messageId == (GameFeedbackMessage)1027)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Magician's Wrath", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Magician's Wrath",
+                            Sprite = Utils.GetRoleSprite(Role.WITCH),
+                            Description = "Control a Coven role",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        // Arsonist
+        public static IEnumerator Arsonist()
+        {
+            necessities.SetValue("Ignite", false);
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(ArsonistIgnitePatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(ArsonistCheckAchievements));
+            yield break;
+        }
+        public static void ArsonistIgnitePatch(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
+            {
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.SpecialAbility)
+                    necessities.SetValue("Ignite", !chatLog.bIsCancel);
+                else if (chatLog.menuChoiceType == MenuChoiceType.NightAbility)
+                    necessities.SetValue("Ignite", false);
+            }
+        }
+        public static void ArsonistCheckAchievements(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if ((bool)necessities.GetValue("Ignite", false) && chatLog.messageId == GameFeedbackMessage.ROLEBLOCKED)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Inflammable Alcohol", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Inflammable Alcohol",
+                            Sprite = Utils.GetRoleSprite(Role.ARSONIST),
+                            Description = "Get roleblocked while igniting",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+                else if (chatLog.messageId == GameFeedbackMessage.ATTACKED_BY_ARSONIST)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Intentional Game Design", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Intentional Game Design",
+                            Sprite = Utils.GetRoleSprite(Role.ARSONIST),
+                            Description = "Get ignited",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
 
+            }
+        }
+        // Baker
+        public static IEnumerator Baker()
+        {
+            if (Utils.IsBTOS2())
+            {
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(BakerDetectPariah));
+                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(BakerDetectTTBread));
+            }
+            yield break;
+        }
+        public static void BakerDetectPariah(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == (GameFeedbackMessage)1020 || chatLog.messageId == (GameFeedbackMessage)1030 || chatLog.messageId == (GameFeedbackMessage)1012)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Free Samples!", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Free Samples!",
+                            Sprite = Utils.GetRoleSprite(Role.BAKER),
+                            Description = "Reveal a Neutral Pariah",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        public static void BakerDetectTTBread()
+        {
+            if ((int)necessities.GetValue("Town Traitor", -1) != -1 && Service.Game.Sim.simulation.observations.playerEffects[(int)necessities.GetValue("Town Traitor", -1)].Data.effects.Contains(EffectType.BREAD) || (int)necessities.GetValue("Town Traitor 2", -1) != -1 && Service.Game.Sim.simulation.observations.playerEffects[(int)necessities.GetValue("Town Traitor 2", -1)].Data.effects.Contains(EffectType.BREAD))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Traitor's Dozen", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Traitor's Dozen",
+                        Sprite = Utils.GetRoleSprite(Role.BAKER),
+                        Description = "Give Bread to the Town Traitor",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Faction Coroutines
+        // Coven
+        public static IEnumerator Coven()
+        {
+            necessities.SetValue("Town Traitor", -1);
+            necessities.SetValue("Town Traitor 2", -1);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectTownTraitor));
+            yield break;
+        }
+        // Apocalypse
+        public static IEnumerator Apocalypse()
+        {
+            if (Utils.IsBTOS2())
+            {
+                necessities.SetValue("Town Traitor", -1);
+                necessities.SetValue("Town Traitor 2", -1);
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectTownTraitor));
+            }
+            yield break;
+        }
+        // Pandora
+        public static IEnumerator Pandora()
+        {
+            necessities.SetValue("Town Traitor", -1);
+            necessities.SetValue("Town Traitor 2", -1);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectTownTraitor));
+            yield break;
+        }
         // Global Coroutines
 
         // Waga Baba Bobo
