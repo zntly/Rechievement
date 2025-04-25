@@ -48,18 +48,24 @@ namespace Rechievement
         {
             bool result;
             if (!Utils.IsBTOS2())
-            {
                 result = (bool)AchievementAdder.necessities.GetValue("Pestilence", false) || (bool)AchievementAdder.necessities.GetValue("War", false) || (bool)AchievementAdder.necessities.GetValue("Famine", false) || (bool)AchievementAdder.necessities.GetValue("Death", false);
-            }
             else
-            {
                 result = Utils.InternalApocCheck();
-            }
             return result;
+        }
+        public static bool CourtCheck()
+        {
+            if (!Utils.IsBTOS2())
+                return false;
+            return Utils.InternalCourtCheck();
         }
         private static bool InternalApocCheck()
         {
             return GameObservationsPatch.musicOverrideObservation.Data.apoc;
+        }
+        private static bool InternalCourtCheck()
+        {
+            return GameObservationsPatch.musicOverrideObservation.Data.court;
         }
 
         // Token: 0x0600002B RID: 43
@@ -80,13 +86,11 @@ namespace Rechievement
         {
             Sprite sprite = NoneSprite;
             if (Utils.BTOS2Exists())
-            {
                 try
                 {
                     sprite = InternalBToS2Sprite(str);
                 }
                 catch { }
-            }
             return sprite;
         }
 
