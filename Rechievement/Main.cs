@@ -32,11 +32,6 @@ namespace Rechievement
             });
             //if (assetBundleFromResources != null)
             //    assetBundleFromResources.Unload(false);
-            try
-            {
-                Settings.SettingsCache.SetValue("BToS2 Extra Achievements", ModSettings.GetBool("BToS2 Extra Achievements", "synapsium.rechievement"));
-            }
-            catch { }
         }
     }
 }
