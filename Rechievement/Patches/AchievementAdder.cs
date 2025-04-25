@@ -142,7 +142,8 @@ namespace Rechievement.Patches
             { Role.BAKER, Baker },
             { Role.BERSERKER, Berserker },
             { Role.DOOMSAYER, Doomsayer },
-            { Role.EXECUTIONER, Executioner }
+            { Role.EXECUTIONER, Executioner },
+            { Role.JESTER, Jester }
         };
 
         public static Dictionary<FactionType, Func<IEnumerator>> allFactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
@@ -2676,7 +2677,7 @@ namespace Rechievement.Patches
         }
         public static void ExecutionerDetectCourt(TrialExecutionerData trialExecutionerData)
         {
-            if (Utils.CourtCheck())
+            if (Utils.CourtCheck() && trialExecutionerData.executionEntries[0].executionerId == Service.Game.Sim.simulation.myPosition)
             {
                 RechievementData rechievement;
                 if (!RechievementData.allRechievements.TryGetValue("Judge, Jury, and Executioner", out rechievement))
@@ -2694,6 +2695,60 @@ namespace Rechievement.Patches
                 rechievement.ShowRechievement();
             }
         }
+        // Jester
+        public static IEnumerator Jester()
+        {
+            necessities.SetValue("Hanged", false);
+            necessities.SetValue("Silenced", false);
+            NewPostfix(typeof(TrialVerdictDecoder), nameof(TrialVerdictDecoder.Encode), nameof(JesterDetectHanged));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(JesterCheckAchievements));
+            NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToNight), nameof(JesterResetSilenced));
+            yield break;
+        }
+        public static void JesterDetectHanged(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.TRIAL_VERDICT)
+            {
+                ChatLogTrialVerdictEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTrialVerdictEntry;
+                if (chatLog.defendantPosition == Service.Game.Sim.simulation.myPosition && chatLog.trialVerdict == TrialVerdict.GUILTY)
+                    necessities.SetValue("Hanged", true);
+            }
+        }
+        public static void JesterResetSilenced() => necessities.SetValue("Silenced", false);
+        public static void JesterCheckAchievements(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.SILENCED)
+                    necessities.SetValue("Silenced", true);
+                else if (chatLog.messageId == GameFeedbackMessage.HANGED_JESTER && (bool)necessities.GetValue("Silenced", false))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Horrible Game Design", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Horrible Game Design",
+                            Sprite = Utils.GetRoleSprite(Role.EXECUTIONER),
+                            Description = "Turn into a Jester",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        // Pirate
+
         // Faction Coroutines
         // Coven
         public static IEnumerator Coven()
