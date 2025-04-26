@@ -21,6 +21,7 @@ using Game.Chat.Decoders;
 using Game.Tos;
 using UnityEngine.UIElements;
 using Newtonsoft.Json;
+using Server.Shared.Cinematics.Data;
 
 namespace Rechievement.Patches
 {
@@ -167,14 +168,19 @@ namespace Rechievement.Patches
 
         public static Dictionary<FactionType, Func<IEnumerator>> allFactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
         {
+            { FactionType.TOWN, Town },
             { FactionType.COVEN, Coven },
             { FactionType.APOCALYPSE, Apocalypse },
-            { BToS2Factions.Pandora, Pandora }
+            { FactionType.VAMPIRE, VampireFaction },
+            { BToS2Factions.Jackal, JackalOrRecruit },
+            { BToS2Factions.Egotist, Egotist },
+            { BToS2Factions.Pandora, Pandora },
+            { BToS2Factions.Compliance, Compliance }
         };
 
         public static List<Func<IEnumerator>> globalCoroutines = new List<Func<IEnumerator>>
         {
-            WagaBabaBobo, BalancedList
+            WagaBabaBobo, BalancedList, Revolution, MyLifeIsAnUnknownObstacle, HaHaImInDanger, WhyMe, LJudge
         };
 
         public static Dictionary<string, object> necessities = new Dictionary<string, object>();
@@ -305,7 +311,7 @@ namespace Rechievement.Patches
                     necessities.SetValue("War", true);
                 else if (chatLog.messageId == GameFeedbackMessage.FAMINE_HAS_EMERGED)
                     necessities.SetValue("Famine", true);
-                else if (chatLog.messageId == GameFeedbackMessage.DEATH_HAS_EMERGED)
+                else if (chatLog.messageId == GameFeedbackMessage.DEATH_HAS_EMERGED || Utils.IsBTOS2() && chatLog.messageId == (GameFeedbackMessage)1097)
                     necessities.SetValue("Death", true);
             }
         }
@@ -324,7 +330,7 @@ namespace Rechievement.Patches
                     necessities.SetValue("War", false);
                 else if (deadRole == Role.BAKER || deadRole == Role.FAMINE)
                     necessities.SetValue("Famine", false);
-                else if (deadRole == Role.DEATH || deadRole == Role.DEATH)
+                else if (deadRole == Role.SOULCOLLECTOR || deadRole == BToS2Roles.Warlock || deadRole == Role.DEATH)
                     necessities.SetValue("Death", false);
             }
         }
@@ -345,6 +351,10 @@ namespace Rechievement.Patches
                         necessities.SetValue("Town Traitor 2", chatLog.playerNumber1);
                 }
             }
+        }
+        public static bool GeneralGetIfTownTraitor(int playerNumber)
+        {
+            return (int)necessities.GetValue("Town Traitor", -1) == playerNumber || (int)necessities.GetValue("Town Traitor 2", -1) == playerNumber;
         }
         // Role Coroutines
         // Admirer
@@ -373,7 +383,7 @@ namespace Rechievement.Patches
                             rechievement = new RechievementData
                             {
                                 Name = "Happy to Help!",
-                                Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite - TownAdmirer
+                                Sprite = Utils.GetAssetBundleSprite("TownAdmirer"), // Give Custom Sprite - TownAdmirer
                                 Description = "Prevent an evil ability on a player",
                                 Vanilla = false,
                                 BToS2 = true
@@ -391,7 +401,7 @@ namespace Rechievement.Patches
                                 rechievement = new RechievementData
                                 {
                                     Name = "Love and War",
-                                    Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite - ApocAdmirer
+                                    Sprite = Utils.GetAssetBundleSprite("ApocAdmirer"), // Give Custom Sprite - ApocAdmirer
                                     Description = "Bestow your Berserker",
                                     Vanilla = false,
                                     BToS2 = true
@@ -407,7 +417,7 @@ namespace Rechievement.Patches
                                 rechievement = new RechievementData
                                 {
                                     Name = "Strictly Business",
-                                    Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite - RecAdmirer
+                                    Sprite = Utils.GetAssetBundleSprite("RecAdmirer"), // Give Custom Sprite - RecAdmirer
                                     Description = "Bestow your other Recruit",
                                     Vanilla = false,
                                     BToS2 = true
@@ -431,7 +441,7 @@ namespace Rechievement.Patches
                     rechievement = new RechievementData
                     {
                         Name = "Written in the Stars",
-                        Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite - TownAdmirer
+                        Sprite = Utils.GetAssetBundleSprite("TownAdmirer"), // Give Custom Sprite - TownAdmirer
                         Description = "Propose to a Doomsayer and win the game",
                         Vanilla = true,
                         BToS2 = false
@@ -2712,6 +2722,9 @@ namespace Rechievement.Patches
         // Doomsayer
         public static IEnumerator Doomsayer()
         {
+            necessities.GetValue("NELeave", false);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(NeutralEvilDetectLeave));
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(NeutralEvilFactionWinPatch));
             if (!Utils.IsBTOS2())
             {
                 necessities.SetValue("Dooms", new List<int>());
@@ -2865,6 +2878,9 @@ namespace Rechievement.Patches
         // Executioner
         public static IEnumerator Executioner()
         {
+            necessities.GetValue("NELeave", false);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(NeutralEvilDetectLeave));
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(NeutralEvilFactionWinPatch));
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(ExecutionerDetectHorribleGameDesign));
             if (Utils.IsBTOS2())
                 NewPostfix(typeof(ExecutionerLeavesFeatures), nameof(ExecutionerLeavesFeatures.Init), nameof(ExecutionerDetectCourt));
@@ -2920,6 +2936,9 @@ namespace Rechievement.Patches
         // Jester
         public static IEnumerator Jester()
         {
+            necessities.GetValue("NELeave", false);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(NeutralEvilDetectLeave));
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(NeutralEvilFactionWinPatch));
             necessities.SetValue("Hanged", false);
             necessities.SetValue("Silenced", false);
             NewPostfix(typeof(TrialVerdictDecoder), nameof(TrialVerdictDecoder.Encode), nameof(JesterDetectHanged));
@@ -2973,7 +2992,12 @@ namespace Rechievement.Patches
         public static IEnumerator Pirate()
         {
             if (!Utils.IsBTOS2())
+            {
+                necessities.GetValue("NELeave", false);
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(NeutralEvilDetectLeave));
+                NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(NeutralEvilFactionWinPatch));
                 NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(PirateDetectLandlubbers));
+            }
             else
                 NewPostfix(typeof(ChatDecoder), nameof(ChatDecoder.Encode), nameof(PirateSpeak));
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(PirateDetectDefense));
@@ -3310,7 +3334,7 @@ namespace Rechievement.Patches
                     rechievement = new RechievementData
                     {
                         Name = "Downright Ghastly",
-                        Sprite = Utils.GetRoleSprite(Role.SHROUD),
+                        Sprite = Utils.GetAssetBundleSprite("ComkShroud"), // Give Custom Sprite - ComkShroud
                         Description = "Kill your own Compliance teammate",
                         Vanilla = false,
                         BToS2 = true
@@ -3398,6 +3422,23 @@ namespace Rechievement.Patches
                 NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(VampireConvertPatch));
                 NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
                 NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(VampireDetectConvert));
+                if (Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber > 1)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Honor of Dracula", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Honor of Dracula",
+                            Sprite = Utils.GetRoleSprite(Role.VAMPIRE),
+                            Description = "Get promoted to Vampire",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
             }
             yield break;
         }
@@ -3472,6 +3513,22 @@ namespace Rechievement.Patches
                                 Name = "I'll Take That, It's Mine Now",
                                 Sprite = Utils.GetRoleSprite(Role.CURSED_SOUL),
                                 Description = "Swap with a Conjurer that still has a charge",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    } else if (!Service.Game.Sim.simulation.myIdentity.Data.role.IsTownAligned() && currentFaction == FactionType.TOWN)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Freaky Friday", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Freaky Friday",
+                                Sprite = Utils.GetRoleSprite(BToS2Roles.CommonTown),
+                                Description = "Steal an evil role as a Town-aligned Cursed Soul",
                                 Vanilla = false,
                                 BToS2 = true
                             };
@@ -3806,6 +3863,9 @@ namespace Rechievement.Patches
         {
             if (Utils.IsBTOS2())
             {
+                necessities.GetValue("NELeave", false);
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(NeutralEvilDetectLeave));
+                NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(NeutralEvilFactionWinPatch));
                 necessities.SetValue("Heretic", false);
                 NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
                 NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
@@ -4037,23 +4097,359 @@ namespace Rechievement.Patches
             }
         }
         // Faction Coroutines
+        // Town
+        public static IEnumerator Town()
+        {
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(TownDetectTTHangedD2));
+            // Freaky Friday ach in Cursed Soul role
+            yield break;
+        }
+        public static void TownDetectTTHangedD2(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
+            {
+                ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
+                if (Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber == 2 && chatLog.killRecord.killedByReasons.Contains(KilledByReason.EXECUTED) && chatLog.killRecord.playerRole.IsTownAligned() && (chatLog.killRecord.playerFaction == FactionType.COVEN || chatLog.killRecord.playerFaction == FactionType.APOCALYPSE || chatLog.killRecord.playerFaction == BToS2Factions.Pandora))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Massive L", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Massive L",
+                            Sprite = Utils.IsBTOS2() ? Utils.GetRoleSprite(BToS2Roles.CommonTown) : Utils.GetRoleSprite(Role.COMMON_TOWN),
+                            Description = "Hang the Jackal during Tribunal",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
         // Coven
         public static IEnumerator Coven()
         {
             necessities.SetValue("Town Traitor", -1);
             necessities.SetValue("Town Traitor 2", -1);
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectTownTraitor));
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(CovenFactionWinPatch));
+            if (currentRole.IsTownAligned() && Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber < 2)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Apprentice Magician", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Apprentice Magician",
+                        Sprite = Utils.GetRoleSprite(Role.TOWN_TRAITOR),
+                        Description = "Betray the Town by joining the Coven",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
             yield break;
+        }
+        public static void CovenFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
+        {
+            if (__instance.cinematicData.winningFaction == FactionType.COVEN)
+            {
+                bool isSolo = __instance.cinematicData.entries.Count == 1;
+                bool allDead = true;
+                foreach (FactionWinsCinematicData.Entry entry in __instance.cinematicData.entries)
+                    if (entry.alive && entry.position != Service.Game.Sim.simulation.myPosition)
+                        allDead = false;
+                if (isSolo)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Magus Perfectus", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Magus Perfectus",
+                            Sprite = Utils.IsBTOS2() ? Utils.GetRoleSprite(BToS2Roles.CommonCoven) : Utils.GetRoleSprite(Role.COMMON_COVEN),
+                            Description = "Win as solo Coven",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+                if (allDead && GeneralGetIfTownTraitor(Service.Game.Sim.simulation.myPosition))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Coven's Concoction", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Coven's Concoction",
+                            Sprite = Utils.GetRoleSprite(Role.TOWN_TRAITOR),
+                            Description = "Win the Town Traitor hunt",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            } else if (Utils.IsBTOS2() && __instance.cinematicData.winningFaction == BToS2Factions.Pandora && !Service.Game.Sim.simulation.roleDeckBuilder.Data.modifierCards.Contains(BToS2Roles.PandorasBox))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Greater Darkness", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Greater Darkness",
+                        Sprite = Utils.GetRoleSprite(BToS2Roles.PandorasBox),
+                        Description = "Win the Town Traitor hunt with the opposing TT, becoming Pandora",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
         }
         // Apocalypse
         public static IEnumerator Apocalypse()
         {
+            necessities.SetValue("InvalidApoc", false);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(ApocalypseDetectApocalypse));
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(ApocalypseFactionWinPatch));
             if (Utils.IsBTOS2())
             {
                 necessities.SetValue("Town Traitor", -1);
                 necessities.SetValue("Town Traitor 2", -1);
                 NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectTownTraitor));
+                if (currentRole.IsTownAligned() && Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber < 2)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Apprentice Worshipper", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Apprentice Worshipper",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.ApocTownTraitor),
+                            Description = "Betray the Town by joining the Apocalypse",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
             }
+            yield break;
+        }
+        public static void ApocalypseDetectApocalypse(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.PESTILENCE_HAS_EMERGED)
+                    necessities.SetValue("InvalidApoc", true);
+                else if (chatLog.messageId == GameFeedbackMessage.WAR_HAS_EMERGED)
+                    necessities.SetValue("InvalidApoc", true);
+                else if (chatLog.messageId == GameFeedbackMessage.FAMINE_HAS_EMERGED)
+                    necessities.SetValue("InvalidApoc", true);
+                else if (chatLog.messageId == GameFeedbackMessage.DEATH_HAS_EMERGED || Utils.IsBTOS2() && chatLog.messageId == (GameFeedbackMessage)1097)
+                    necessities.SetValue("InvalidApoc", true);
+            }
+        }
+        public static void ApocalypseFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
+        {
+            if (__instance.cinematicData.winningFaction == FactionType.APOCALYPSE)
+            {
+                bool allDead = true;
+                foreach (FactionWinsCinematicData.Entry entry in __instance.cinematicData.entries)
+                    if (entry.alive && entry.position != Service.Game.Sim.simulation.myPosition)
+                        allDead = false;
+                if (!(bool)necessities.GetValue("InvalidApoc", false))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Atheist", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Atheist",
+                            Sprite = Utils.IsBTOS2() ? Utils.GetRoleSprite(BToS2Roles.RandomApocalypse) : Utils.GetRoleSprite(Role.NEUTRAL_APOCALYPSE),
+                            Description = "Win without any member of the Apocalypse transforming",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+                if (Utils.IsBTOS2() && allDead && GeneralGetIfTownTraitor(Service.Game.Sim.simulation.myPosition))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Final Pact", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Final Pact",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.ApocTownTraitor),
+                            Description = "Win the Town Traitor hunt",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+            else if (Utils.IsBTOS2() && __instance.cinematicData.winningFaction == BToS2Factions.Pandora && !Service.Game.Sim.simulation.roleDeckBuilder.Data.modifierCards.Contains(BToS2Roles.PandorasBox))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Greater Darkness", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Greater Darkness",
+                        Sprite = Utils.GetRoleSprite(BToS2Roles.PandorasBox),
+                        Description = "Win the Town Traitor hunt with the opposing TT, becoming Pandora",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Neutral Evil
+        public static void NeutralEvilDetectLeave(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.LEFT_TOWN && chatLog.playerNumber1 == Service.Game.Sim.simulation.myPosition && chatLog.role1.GetSubAlignment() == SubAlignment.EVIL)
+                    necessities.SetValue("NELeave", true);
+            }
+        }
+        public static void NeutralEvilFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
+        {
+            if (__instance.cinematicData.winningFaction == FactionType.NONE && (bool)necessities.GetValue("NELeave", false))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Who Needs a Faction?", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Who Needs a Faction?",
+                        Sprite = Utils.IsBTOS2() ? Utils.GetRoleSprite(BToS2Roles.NeutralEvil) : Utils.GetRoleSprite(Role.NEUTRAL_EVIL),
+                        Description = "Win as Neutral Evil during a Match Draw",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Vampire
+        public static IEnumerator VampireFaction()
+        {
+            if (Utils.IsBTOS2() && currentRole.IsTownAligned())
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Blood Drinker", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Blood Drinker",
+                        Sprite = Utils.GetRoleSprite(Role.VAMPIRE),
+                        Description = "Betray the Town and embrace immortality",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            yield break;
+        }
+        // Jackal or Recruit
+        public static IEnumerator JackalOrRecruit()
+        {
+            if (currentRole != BToS2Roles.Marshal)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Contracted Traitor", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Contracted Traitor",
+                        Sprite = Utils.GetBToS2Sprite("EffectIcon_Recruit"),
+                        Description = "Get recruited by the Jackal",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(JackalFactionWinPatch));
+            yield break;
+        }
+        public static void JackalFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
+        {
+            if (__instance.cinematicData.winningFaction == BToS2Factions.Jackal)
+            {
+                bool allAlive = true;
+                foreach (FactionWinsCinematicData.Entry entry in __instance.cinematicData.entries)
+                    if (!entry.alive)
+                        allAlive = false;
+                if (allAlive)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Smooth Operators", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Smooth Operators",
+                            Sprite = Utils.GetBToS2Sprite("EffectIcon_Recruit"),
+                            Description = "Win without the Jackal or any recruited players dying",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        // Egotist
+        public static IEnumerator Egotist()
+        {
+            RechievementData rechievement;
+            if (!RechievementData.allRechievements.TryGetValue("Pumping Adrenaline", out rechievement))
+            {
+                rechievement = new RechievementData
+                {
+                    Name = "Pumping Adrenaline",
+                    Sprite = Utils.GetRoleSprite(BToS2Roles.Egotist),
+                    Description = "Let your inner ego overwhelm you",
+                    Vanilla = false,
+                    BToS2 = true
+                };
+                RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+            }
+            rechievement.ShowRechievement();
             yield break;
         }
         // Pandora
@@ -4062,7 +4458,122 @@ namespace Rechievement.Patches
             necessities.SetValue("Town Traitor", -1);
             necessities.SetValue("Town Traitor 2", -1);
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectTownTraitor));
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(PandoraFactionWinPatch));
+            if (currentRole.IsTownAligned() && Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber < 2)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Apprentice Cultist", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Apprentice Cultist",
+                        Sprite = Utils.GetRoleSprite(BToS2Roles.PandorasBox),
+                        Description = "Betray the Town by joining Pandora",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
             yield break;
+        }
+        public static void PandoraFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
+        {
+            if (__instance.cinematicData.winningFaction == BToS2Factions.Pandora)
+            {
+                bool allAlive = true;
+                bool allDead = true;
+                foreach (FactionWinsCinematicData.Entry entry in __instance.cinematicData.entries)
+                    if (!entry.alive)
+                        allAlive = false;
+                    else if (entry.alive && entry.position != Service.Game.Sim.simulation.myPosition)
+                        allDead = false;
+                if (allAlive)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Perfect Pandora", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Perfect Pandora",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.PandorasBox),
+                            Description = "Win the game without any members of Pandora’s Box dying",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+                if (allDead && GeneralGetIfTownTraitor(Service.Game.Sim.simulation.myPosition))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Ruination", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Ruination",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.PandorasBox),
+                            Description = "Win the Town Traitor hunt",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+            else if (__instance.cinematicData.winningFaction == BToS2Factions.Pandora && !Service.Game.Sim.simulation.roleDeckBuilder.Data.modifierCards.Contains(BToS2Roles.PandorasBox))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Greater Darkness", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Greater Darkness",
+                        Sprite = Utils.GetRoleSprite(BToS2Roles.PandorasBox),
+                        Description = "Win the Town Traitor hunt with the opposing TT, becoming Pandora",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Compliance
+        public static IEnumerator Compliance()
+        {
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(ComplianceFactionWinPatch));
+            yield break;
+        }
+        public static void ComplianceFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
+        {
+            if (__instance.cinematicData.winningFaction == BToS2Factions.Compliance)
+            {
+                bool allAlive = true;
+                foreach (FactionWinsCinematicData.Entry entry in __instance.cinematicData.entries)
+                    if (!entry.alive)
+                        allAlive = false;
+                if (allAlive)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Perfect Compliance", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Perfect Compliance",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.CompliantKillers),
+                            Description = "Win the game without any members of the Compliant Killers dying",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
         }
         // Global Coroutines
 
@@ -4112,7 +4623,7 @@ namespace Rechievement.Patches
                     rechievement = new RechievementData
                     {
                         Name = "Balanced List",
-                        Sprite = Utils.GetRoleSprite(Role.ANY),
+                        Sprite = Utils.GetRoleSprite(BToS2Roles.RandomApocalypse),
                         Description = "Witness a Horseman of the Apocalypse transform Day 1",
                         Vanilla = false,
                         BToS2 = true
@@ -4127,31 +4638,189 @@ namespace Rechievement.Patches
         public static Role currentRole = Role.NONE;
         public static FactionType currentFaction = FactionType.NONE;
         public static List<ChatLogMessage> processed = new List<ChatLogMessage>();
-    }
-
-    public class BToS2AchievementAdder
-    {
-        public static IEnumerator Default()
+        // Revolution
+        public static IEnumerator Revolution()
         {
-            yield return new WaitForEndOfFrame();
-            Debug.LogWarning("test -----------------");
+            necessities.SetValue("Revolution", false);
+            NewPostfix(typeof(TrialVerdictDecoder), nameof(TrialVerdictDecoder.Encode), nameof(RevolutionMarshalHanged));
+            NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(RevolutionFactionWinPatch));
             yield break;
         }
-
-        public static Dictionary<Role, Func<IEnumerator>> btos2RoleCoroutines = new Dictionary<Role, Func<IEnumerator>>
+        public static void RevolutionMarshalHanged(ChatLogMessage chatLogMessage)
         {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.TRIAL_VERDICT)
             {
-                Role.NONE,
-                Default
+                ChatLogTrialVerdictEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTrialVerdictEntry;
+                
+                if (chatLog.trialVerdict == TrialVerdict.GUILTY && Service.Game.Sim.simulation.observations.playerEffects[chatLog.defendantPosition].Data.effects.Contains(EffectType.REVEALED_MARSHAL))
+                    necessities.SetValue("Revolution", true);
             }
-        };
-
-        public static Dictionary<FactionType, Func<IEnumerator>> btos2FactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
+        }
+        public static void RevolutionFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
         {
+            if (__instance.cinematicData.winningFaction == currentFaction && (bool)necessities.GetValue("Revolution", false))
             {
-                FactionType.NONE,
-                Default
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Revolution", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Revolution",
+                        Sprite = Utils.IsBTOS2() ? Utils.GetRoleSprite(BToS2Roles.Marshal) : Utils.GetRoleSprite(Role.MARSHAL),
+                        Description = "Hang a revealed Marshal and win the game",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
             }
-        };
+        }
+        // My Life is an Unknown Obstacle
+        public static IEnumerator MyLifeIsAnUnknownObstacle()
+        {
+            necessities.SetValue("UOCount", 0);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(LifeIsUOCount));
+            yield break;
+        }
+        public static void LifeIsUOCount(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.ABILITY_FAILED_DUE_TO_AN_UNKNOWN_OBSTACLE || Utils.IsBTOS2() && chatLog.messageId == (GameFeedbackMessage)1100)
+                {
+                    int uoCount = (int)necessities.GetValue("UOCount", 0);
+                    necessities.SetValue("UOCount", uoCount + 1);
+                    if (uoCount >= 2)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("My Life is an Unknown Obstacle", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "My Life is an Unknown Obstacle",
+                                Sprite = Utils.IsBTOS2() ? Utils.GetRoleSprite(BToS2Roles.AnonNames) : Utils.GetRoleSprite(Role.ANON_PLAYERS),
+                                Description = "See an Unknown Obstacle 3 times in one game",
+                                Vanilla = true,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        // Ha-ha, I'm In Danger
+        public static IEnumerator HaHaImInDanger()
+        {
+            necessities.SetValue("DangerElement", false);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(DangerCheckRevealedVeteran));
+            NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(DangerReset));
+            yield break;
+        }
+        public static void DangerCheckRevealedVeteran(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.TARGET_IS_VETERAN || chatLog.messageId == GameFeedbackMessage.KILLED_BY_VETERAN)
+                {
+                    if (!(bool)necessities.GetValue("DangerElement", false))
+                        necessities.SetValue("DangerElement", true);
+                    else
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Ha-ha, I'm In Danger", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Ha-ha, I'm In Danger",
+                                Sprite = Utils.GetRoleSprite(Role.ROLES_ON_DEATH_HIDDEN),
+                                Description = "Get shot by a Veteran you revealed that night",
+                                Vanilla = true,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        public static void DangerReset() => necessities.SetValue("DangerElement", false);
+        // Why Me?!
+        public static IEnumerator WhyMe()
+        {
+            NewPostfix(typeof(ChatDecoder), nameof(ChatDecoder.Encode), nameof(CheckIfSaidWhyMe));
+            yield break;
+        }
+        public static void CheckIfSaidWhyMe(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            ChatLogChatMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogChatMessageEntry;
+            if (chatLog.speakerId == Service.Game.Sim.simulation.myPosition && Service.Game.Sim.simulation.trialData.Data.defendantPosition == Service.Game.Sim.simulation.myPosition && chatLog.message.ToLower().Contains("why me"))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Why Me?!", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Why Me?!",
+                        Sprite = Utils.GetRoleSprite(Role.FAST_MODE),
+                        Description = "You know what you did",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        public static IEnumerator LJudge()
+        {
+            if (Utils.IsBTOS2())
+                NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(DetectLJudge));
+            yield break;
+        }
+        public static void DetectLJudge(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
+            {
+                ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
+                if (Utils.CourtCheck() && chatLog.killRecord.killedByReasons.Contains(KilledByReason.EXECUTED) && chatLog.killRecord.playerRole == BToS2Roles.Judge)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("L Judge", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "L Judge",
+                            Sprite = Utils.GetBToS2Sprite("RoleCard_Judge_SpecialAbility"),
+                            Description = "Witness the Judge be hanged in Court",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
     }
 }
