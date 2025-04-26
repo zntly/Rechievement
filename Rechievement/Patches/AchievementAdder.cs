@@ -102,6 +102,7 @@ namespace Rechievement.Patches
             { Role.BODYGUARD, Bodyguard },
             { Role.CLERIC, Cleric },
             { Role.CORONER, Coroner },
+            { Role.CRUSADER, Crusader },
             { Role.DEPUTY, Deputy },
             { Role.INVESTIGATOR, Investigator },
             { Role.JAILOR, Jailor },
@@ -154,7 +155,14 @@ namespace Rechievement.Patches
             { Role.CONJURER, Conjurer },
             // Outliers
             { Role.SOCIALITE, SocialiteOrBanshee }, // Socialite (Vanilla) or Banshee (BToS2)
-            { Role.MARSHAL, MarshalOrJackal } // Marshal (Vanilla) or Jackal (BToS2)
+            { Role.MARSHAL, MarshalOrJackal }, // Marshal (Vanilla) or Jackal (BToS2)
+            { Role.ORACLE, OracleOrMarshal }, // Oracle (Vanilla) or Marshal (BToS2)
+            // BToS2
+            { BToS2Roles.Judge, Judge },
+            { BToS2Roles.Auditor, Auditor },
+            { BToS2Roles.Inquisitor, Inquisitor },
+            { BToS2Roles.Starspawn, Starspawn },
+            { BToS2Roles.Warlock, Warlock }
         };
 
         public static Dictionary<FactionType, Func<IEnumerator>> allFactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
@@ -342,11 +350,10 @@ namespace Rechievement.Patches
         // Admirer
         public static IEnumerator Admirer()
         {
-            if (!Utils.IsBTOS2())
-                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(AdmirerProposalMessagePatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(AdmirerMessagePatch));
             yield break;
         }
-        public static void AdmirerProposalMessagePatch(ChatLogMessage chatLogMessage)
+        public static void AdmirerMessagePatch(ChatLogMessage chatLogMessage)
         {
             if (processed.Contains(chatLogMessage))
                 return;
@@ -356,6 +363,61 @@ namespace Rechievement.Patches
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
                 if (chatLog.messageId == GameFeedbackMessage.ADMIRER_PROPOSAL_ACCEPTED_ROLE_REVEAL && chatLog.role1 == Role.DOOMSAYER)
                     NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(AdmirerFactionWinPatch));
+                else if (Utils.IsBTOS2())
+                {
+                    if (chatLog.messageId == (GameFeedbackMessage)1111)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Happy to Help!", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Happy to Help!",
+                                Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite - TownAdmirer
+                                Description = "Prevent an evil ability on a player",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    } else if (chatLog.messageId == (GameFeedbackMessage)1109)
+                    {
+                        if ((currentFaction == FactionType.APOCALYPSE || currentFaction == BToS2Factions.Pandora) && (Service.Game.Sim.simulation.knownRolesAndFactions.Data.GetValue(chatLog.playerNumber1, new Tuple<Role, FactionType>(Role.NONE, FactionType.NONE)).Item1 == Role.BERSERKER || Service.Game.Sim.simulation.knownRolesAndFactions.Data.GetValue(chatLog.playerNumber1, new Tuple<Role, FactionType>(Role.NONE, FactionType.NONE)).Item1 == Role.WAR))
+                        {
+                            RechievementData rechievement;
+                            if (!RechievementData.allRechievements.TryGetValue("Love and War", out rechievement))
+                            {
+                                rechievement = new RechievementData
+                                {
+                                    Name = "Love and War",
+                                    Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite - ApocAdmirer
+                                    Description = "Bestow your Berserker",
+                                    Vanilla = false,
+                                    BToS2 = true
+                                };
+                                RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                            }
+                            rechievement.ShowRechievement();
+                        } else if (currentFaction == BToS2Factions.Jackal && Service.Game.Sim.simulation.observations.playerEffects[chatLog.playerNumber1].Data.effects.Contains((EffectType)100))
+                        {
+                            RechievementData rechievement;
+                            if (!RechievementData.allRechievements.TryGetValue("Strictly Business", out rechievement))
+                            {
+                                rechievement = new RechievementData
+                                {
+                                    Name = "Strictly Business",
+                                    Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite - RecAdmirer
+                                    Description = "Bestow your other Recruit",
+                                    Vanilla = false,
+                                    BToS2 = true
+                                };
+                                RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                            }
+                            rechievement.ShowRechievement();
+                        }
+                    }
+                }
             }
         }
 
@@ -369,7 +431,7 @@ namespace Rechievement.Patches
                     rechievement = new RechievementData
                     {
                         Name = "Written in the Stars",
-                        Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite
+                        Sprite = Utils.GetRoleSprite(Role.ADMIRER), // Give Custom Sprite - TownAdmirer
                         Description = "Propose to a Doomsayer and win the game",
                         Vanilla = true,
                         BToS2 = false
@@ -384,6 +446,8 @@ namespace Rechievement.Patches
         public static IEnumerator Amnesiac()
         {
             NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(AmnesiacFactionWinPatch));
+            if (Utils.IsBTOS2())
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(AmnesiacDetectRememberNonTown));
             yield break;
         }
         public static void AmnesiacFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
@@ -406,7 +470,33 @@ namespace Rechievement.Patches
                 rechievement.ShowRechievement();
             }
         }
-
+        public static void AmnesiacDetectRememberNonTown(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.AMNESIAC_REMEMBERED_THEY_WERE_LIKE && !chatLog.role1.IsTownAligned())
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Alchemory", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Alchemory",
+                            Sprite = Utils.GetRoleSprite(Role.AMNESIAC),
+                            Description = "Remember an evil role",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
         // Bodyguard
         public static IEnumerator Bodyguard()
         {
@@ -503,7 +593,56 @@ namespace Rechievement.Patches
                 }
             }
         }
-
+        // Crusader
+        public static IEnumerator Crusader()
+        {
+            if (Utils.IsBTOS2())
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(CrusaderCheckAchievements));
+            yield break;
+        }
+        public static void CrusaderCheckAchievements(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == (GameFeedbackMessage)1004)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("The Thing About Crusader", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "The Thing About Crusader",
+                            Sprite = Utils.GetRoleSprite(Role.CRUSADER),
+                            Description = "Block a player with an Unknown Obstacle",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                } else if (chatLog.messageId == (GameFeedbackMessage)1100)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Known Obstacle", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Known Obstacle",
+                            Sprite = Utils.GetRoleSprite(Role.CRUSADER),
+                            Description = "See an Unknown Obstacle",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
         // Deputy
         public static IEnumerator Deputy()
         {
@@ -545,22 +684,41 @@ namespace Rechievement.Patches
                 return;
             processed.Add(chatLogMessage);
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
-            if (chatLog.killRecord.isDay && currentFaction == FactionType.TOWN && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Deputy Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT) && chatLog.killRecord.playerRole.IsTownAligned() && chatLog.killRecord.playerFaction == FactionType.TOWN)
+            if (chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Deputy Target", -1) && chatLog.killRecord.playerRole.IsTownAligned() && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT))
             {
-                RechievementData rechievement;
-                if (!RechievementData.allRechievements.TryGetValue("Framed Fatality", out rechievement))
+                if (currentFaction == FactionType.TOWN && chatLog.killRecord.playerFaction == FactionType.TOWN)
                 {
-                    rechievement = new RechievementData
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Framed Fatality", out rechievement))
                     {
-                        Name = "Framed Fatality",
-                        Sprite = Utils.GetRoleSprite(Role.DEPUTY),
-                        Description = "Shoot a Town member as a Town-aligned Deputy",
-                        Vanilla = true,
-                        BToS2 = true
-                    };
-                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        rechievement = new RechievementData
+                        {
+                            Name = "Framed Fatality",
+                            Sprite = Utils.GetRoleSprite(Role.DEPUTY),
+                            Description = "Shoot a Town member as a Town-aligned Deputy",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                } else if (Utils.IsBTOS2() && chatLog.killRecord.playerFaction == BToS2Factions.Jackal)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("False Allegiance", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "False Allegiance",
+                            Sprite = Utils.GetRoleSprite(Role.DEPUTY),
+                            Description = "Shoot a recruited Town member",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
                 }
-                rechievement.ShowRechievement();
             }
         }
 
@@ -750,9 +908,37 @@ namespace Rechievement.Patches
         public static IEnumerator Mayor()
         {
             NewPostfix(typeof(GameSimulation), nameof(GameSimulation.HandleOnGameInfoChanged), nameof(MayorCheckVotes));
+            if (Utils.IsBTOS2())
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(MayorDetectAudit));
             yield break;
         }
-
+        public static void MayorDetectAudit(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == (GameFeedbackMessage)1013 && !Service.Game.Sim.simulation.observations.playerEffects[Service.Game.Sim.simulation.myPosition].Data.effects.Contains(EffectType.REVEALED_MAYOR))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Impeachment", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Impeachment",
+                            Sprite = Utils.GetRoleSprite(Role.MAYOR),
+                            Description = "Have the Auditor steal your Reveal charge",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
         public static void MayorCheckVotes()
         {
             if (Service.Game.Sim.simulation.observations.playerVotingObservations.GetElement(Service.Game.Sim.simulation.myPosition).Data.voteWeight >= 5)
@@ -934,6 +1120,8 @@ namespace Rechievement.Patches
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(RaiseRemoveTargetIfCantUse));
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(DeputyRemoveTargetOnMiss));
             NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(RaiseDeputyDetectTargetDeath));
+            if (Utils.IsBTOS2())
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(RetributionistVeteranDetectShotVisitor));
             yield break;
         }
         public static void RaiseTargetingPatch(ChatLogMessage chatLogMessage)
@@ -951,7 +1139,33 @@ namespace Rechievement.Patches
                 }
             }
         }
-
+        public static void RetributionistVeteranDetectShotVisitor(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.VETERAN_SHOT_VISITOR)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Postmortem Paranoia", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Postmortem Paranoia",
+                            Sprite = Utils.GetRoleSprite(Role.RETRIBUTIONIST),
+                            Description = "Resurrect a Veteran and kill someone",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
         public static void RaiseRemoveTargetIfCantUse(ChatLogMessage chatLogMessage)
         {
             if (processed.Contains(chatLogMessage))
@@ -3227,6 +3441,7 @@ namespace Rechievement.Patches
                     }
                 }
             }
+            necessities.SetValue("Convert", false);
         }
         // Cursed Soul
         public static IEnumerator CursedSoul()
@@ -3377,6 +3592,448 @@ namespace Rechievement.Patches
                     RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
                 }
                 rechievement.ShowRechievement();
+            }
+        }
+        // Oracle or Marshal
+        public static IEnumerator OracleOrMarshal()
+        {
+            if (!Utils.IsBTOS2())
+            {
+                // Oracle (Vanilla) - No Oracle Achievements
+            } else
+            {
+                // Marshal (BToS2)
+                NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(MarshalDetectJackalHangTribunal));
+            }
+            yield break;
+        }
+        public static void MarshalDetectJackalHangTribunal(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
+            {
+                ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
+                if (Service.Game.Sim.simulation.trialData.Data.isTribunal && chatLog.killRecord.killedByReasons.Contains(KilledByReason.EXECUTED) && chatLog.killRecord.playerRole == BToS2Roles.Marshal)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Rival Commander Down", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Rival Commander Down",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.Marshal),
+                            Description = "Hang the Jackal during Tribunal",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        // Judge
+        public static IEnumerator Judge()
+        {
+            if (Utils.IsBTOS2())
+            {
+                necessities.SetValue("Court Hang", false);
+                necessities.SetValue("Court", false);
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(JudgeDetectCourtAndProsecutor));
+                NewPostfix(typeof(ExecutionerLeavesFeatures), nameof(ExecutionerLeavesFeatures.Init), nameof(JudgeDetectExecutionerInCourt));
+                NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(JudgeDetectCourtHang));
+                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToNight), nameof(JudgeDetectCourtNotHang));
+            }
+            yield break;
+        }
+        public static void JudgeDetectCourtAndProsecutor(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.TARGET_IS_PROSECUTOR)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Rival Attorney", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Rival Attorney",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.Judge),
+                            Description = "Subpoena a Prosecutor",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                } else if (chatLog.messageId == (GameFeedbackMessage)1021)
+                {
+                    necessities.SetValue("Court", true);
+                    if (Service.Game.Sim.simulation.trialData.Data.isTribunal)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Overruled", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Overruled",
+                                Sprite = Utils.GetRoleSprite(BToS2Roles.Judge),
+                                Description = "Call Court during a Tribunal",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        public static void JudgeDetectExecutionerInCourt(TrialExecutionerData trialExecutionerData)
+        {
+            if (Utils.CourtCheck())
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Bailiff", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Bailiff",
+                        Sprite = Utils.GetRoleSprite(BToS2Roles.Judge),
+                        Description = "Hang the Executioner’s target during Court",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        public static void JudgeDetectCourtHang(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
+            {
+                ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
+                if (Utils.CourtCheck() && chatLog.killRecord.killedByReasons.Contains(KilledByReason.EXECUTED))
+                    necessities.SetValue("Court Hang", true);
+            }
+        }
+        public static void JudgeDetectCourtNotHang()
+        {
+            if ((bool)necessities.GetValue("Court", false) && !(bool)necessities.GetValue("Court Hang", false))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Jury Nullification", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Jury Nullification",
+                        Sprite = Utils.GetRoleSprite(BToS2Roles.Judge),
+                        Description = "Hang nobody during Court",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            necessities.SetValue("Court", false);
+            necessities.SetValue("Court Hang", false);
+        }
+        // Auditor
+        public static IEnumerator Auditor()
+        {
+            if (Utils.IsBTOS2())
+            {
+                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(AuditorCheckAudits));
+            }
+            yield break;
+        }
+        public static void AuditorCheckAudits()
+        {
+            int audits = 0;
+            foreach (DiscussionPlayerObservation discussionPlayer in Service.Game.Sim.simulation.observations.discussionPlayers)
+                if (discussionPlayer.Data.position != Service.Game.Sim.simulation.myPosition && Service.Game.Sim.simulation.observations.playerEffects[discussionPlayer.Data.position].Data.effects.Contains((EffectType)104))
+                {
+                    audits += 1;
+                    if (Service.Game.Sim.simulation.observations.playerEffects[discussionPlayer.Data.position].Data.effects.Contains(EffectType.REVEALED_MARSHAL))
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Immobilized Command", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Immobilized Command",
+                                Sprite = Utils.GetRoleSprite(BToS2Roles.Auditor),
+                                Description = "Audit a revealed Marshal",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            if (audits >= 3)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Internal Revenue Service", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Internal Revenue Service",
+                        Sprite = Utils.GetRoleSprite(BToS2Roles.Auditor),
+                        Description = "Audit the charges of 3 players in one game",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Inquisitor
+        public static IEnumerator Inquisitor()
+        {
+            if (Utils.IsBTOS2())
+            {
+                necessities.SetValue("Heretic", false);
+                NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(InquisitorCheckAchievements));
+                NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(InquisitorDetectTargetDeath));
+                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToNight), nameof(InquisitorResetHeretic));
+            }
+            yield break;
+        }
+        public static void InquisitorCheckAchievements(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.LEFT_TOWN && chatLog.playerNumber1 == Service.Game.Sim.simulation.myPosition && chatLog.role1 == BToS2Roles.Inquisitor && Service.Game.Sim.simulation.observations.roleCardObservation.Data.specialAbilityRemaining == 3)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Divine Will", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Divine Will",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.Inquisitor),
+                            Description = "Win without vanquishing anyone",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                } else if (chatLog.messageId == (GameFeedbackMessage)1024)
+                {
+                    necessities.SetValue("Heretic", true);
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("By the Pope!", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "By the Pope!",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.Inquisitor),
+                            Description = "Find a Heretic",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        public static void InquisitorDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
+            {
+                ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
+                if (chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1))
+                {
+                    if (chatLog.killRecord.killedByReasons.Contains((KilledByReason)72) && (chatLog.killRecord.playerRole == Role.RETRIBUTIONIST || chatLog.killRecord.playerRole == Role.NECROMANCER))
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Abomination!", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Abomination!",
+                                Sprite = Utils.GetRoleSprite(BToS2Roles.Inquisitor),
+                                Description = "Vanquish a heretic Retributionist or Necromancer",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    } else if ((bool)necessities.GetValue("Heretic", false) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.SHROUD_ATTACKED))
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Holy Ghost", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Holy Ghost",
+                                Sprite = Utils.GetRoleSprite(BToS2Roles.Inquisitor),
+                                Description = "Kill a heretic by being Shrouded",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        public static void InquisitorResetHeretic() => necessities.SetValue("Heretic", false);
+        // Starspawn
+        public static IEnumerator Starspawn()
+        {
+            if (Utils.IsBTOS2())
+            {
+                necessities.SetValue("Starbound TP", false);
+                NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(StarspawnDetectStarbound));
+                NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(StarspawnDetectTargetDeath));
+            }
+            yield break;
+        }
+        public static void StarspawnDetectStarbound(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == (GameFeedbackMessage)1031 && chatLog.role1.GetSubAlignment() == SubAlignment.PROTECTIVE)
+                {
+                    necessities.SetValue("Starbound TP", true);
+                    if (chatLog.role1 == Role.CRUSADER)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Crus a Fiction", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Crus a Fiction",
+                                Sprite = Utils.GetRoleSprite(BToS2Roles.Starspawn),
+                                Description = "Starbound a Crusader",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        public static void StarspawnDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
+            {
+                ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
+                if (chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && (bool)necessities.GetValue("Starbound TP", false))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Denied!", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Denied!",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.Starspawn),
+                            Description = "Prevent a Town Protective from saving their target",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        // Warlock
+        public static IEnumerator Warlock()
+        {
+            if (Utils.IsBTOS2())
+            {
+                necessities.SetValue("Curse Visit", 0);
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(WarlockDetectCurse));
+            }
+            yield break;
+        }
+        public static void WarlockDetectCurse(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == (GameFeedbackMessage)1112)
+                {
+                    int curseVisit = (int)necessities.GetValue("Curse Visit", 0);
+                    necessities.SetValue("Curse Visit", curseVisit + 1);
+                    if (curseVisit >= 1)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Inverse Curse", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Inverse Curse",
+                                Sprite = Utils.GetRoleSprite(BToS2Roles.Warlock),
+                                Description = "Curse a Seer and cause two players to appear friendly",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                    if (chatLog.playerNumber2 == Service.Game.Sim.simulation.myPosition)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Excuse Me?", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Excuse Me?",
+                                Sprite = Utils.GetRoleSprite(BToS2Roles.Warlock),
+                                Description = "See a cursed player visit you",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
             }
         }
         // Faction Coroutines
