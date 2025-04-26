@@ -250,9 +250,7 @@ namespace Rechievement.Patches
         // General Patches
         public static void GeneralTargetingPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -262,9 +260,7 @@ namespace Rechievement.Patches
         }
         public static void GeneralRemoveTargetIfImpededPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -279,9 +275,7 @@ namespace Rechievement.Patches
         }
         public static void GeneralNecronomiconTargetingPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION && Service.Game.Sim.simulation.observations.roleCardObservation.Data.powerUp == POWER_UP_TYPE.NECRONOMICON)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -299,9 +293,7 @@ namespace Rechievement.Patches
         }
         public static void GeneralDetectApocalypse(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -317,9 +309,7 @@ namespace Rechievement.Patches
         }
         public static void GeneralDetectApocalypseDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
             {
                 ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
@@ -365,9 +355,7 @@ namespace Rechievement.Patches
         }
         public static void AdmirerMessagePatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -482,9 +470,7 @@ namespace Rechievement.Patches
         }
         public static void AmnesiacDetectRememberNonTown(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -518,9 +504,7 @@ namespace Rechievement.Patches
 
         public static void BodyguardDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (!chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1))
             {
@@ -574,9 +558,7 @@ namespace Rechievement.Patches
 
         public static void AutopsyCheck(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -612,9 +594,7 @@ namespace Rechievement.Patches
         }
         public static void CrusaderCheckAchievements(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -664,9 +644,7 @@ namespace Rechievement.Patches
 
         public static void DeputyTargetingPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -677,9 +655,7 @@ namespace Rechievement.Patches
 
         public static void DeputyRemoveTargetOnMiss(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -690,9 +666,7 @@ namespace Rechievement.Patches
 
         public static void DeputyDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Deputy Target", -1) && chatLog.killRecord.playerRole.IsTownAligned() && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT))
             {
@@ -745,9 +719,9 @@ namespace Rechievement.Patches
 
         public static void InvestigatorCountCrimes(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
+            if (processed2.Contains(chatLogMessage))
                 return;
-            processed.Add(chatLogMessage);
+            processed2.Add(chatLogMessage);
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -814,9 +788,6 @@ namespace Rechievement.Patches
         }
         public static void JailorDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.playerFaction != FactionType.TOWN && chatLog.killRecord.killedByReasons.Contains(KilledByReason.EXECUTED) && chatLog.killRecord.playerRole.IsTownAligned())
             {
@@ -876,9 +847,9 @@ namespace Rechievement.Patches
         }
         public static void LookoutCountVisitors(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
+            if (processed2.Contains(chatLogMessage))
                 return;
-            processed.Add(chatLogMessage);
+            processed2.Add(chatLogMessage);
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -892,9 +863,7 @@ namespace Rechievement.Patches
         public static void LookoutResetVisitors() => necessities.SetValue("Visits", 0);
         public static void LookoutDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (!chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && (int)necessities.GetValue("Visits", 0) == 1)
             {
@@ -924,9 +893,7 @@ namespace Rechievement.Patches
         }
         public static void MayorDetectAudit(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -980,9 +947,7 @@ namespace Rechievement.Patches
         }
         public static void MonarchDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (!chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1))
             {
@@ -1019,9 +984,7 @@ namespace Rechievement.Patches
         }
         public static void ProsecutorDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Prosecute Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.PROSECUTION))
             {
@@ -1063,9 +1026,7 @@ namespace Rechievement.Patches
         }
         public static void ProsecutorInno(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TRIAL_VERDICT)
             {
                 ChatLogTrialVerdictEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTrialVerdictEntry;
@@ -1097,9 +1058,7 @@ namespace Rechievement.Patches
         }
         public static void PsychicDetectTooGood(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1136,9 +1095,7 @@ namespace Rechievement.Patches
         }
         public static void RaiseTargetingPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -1151,9 +1108,7 @@ namespace Rechievement.Patches
         }
         public static void RetributionistVeteranDetectShotVisitor(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1178,9 +1133,7 @@ namespace Rechievement.Patches
         }
         public static void RaiseRemoveTargetIfCantUse(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1194,9 +1147,7 @@ namespace Rechievement.Patches
 
         public static void RaiseDeputyDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT))
             {
@@ -1233,9 +1184,7 @@ namespace Rechievement.Patches
 
         public static void SeerTargetingPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -1248,9 +1197,7 @@ namespace Rechievement.Patches
 
         public static void SeerRemoveTargetIfImpededPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1323,9 +1270,7 @@ namespace Rechievement.Patches
         }
         public static void SeerDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.isDay && (chatLog.killRecord.killedByReasons.Contains(KilledByReason.LYNCHED) || chatLog.killRecord.killedByReasons.Contains(KilledByReason.PROSECUTION)) && chatLog.killRecord.playerRole != BToS2Roles.Jackal && chatLog.killRecord.playerFaction == BToS2Factions.Jackal && ((int)chatLog.killRecord.playerId == (int)necessities.GetValue("Intuit", -1) || (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Gaze", -1)))
             {
@@ -1365,9 +1310,7 @@ namespace Rechievement.Patches
 
         public static void SheriffDetectSuspicious(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1382,9 +1325,7 @@ namespace Rechievement.Patches
 
         public static void SheriffDeputyDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && (bool)necessities.GetValue("Suspicious") && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT))
             {
@@ -1418,9 +1359,9 @@ namespace Rechievement.Patches
 
         public static void SpyBugCounting(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
+            if (processed2.Contains(chatLogMessage))
                 return;
-            processed.Add(chatLogMessage);
+            processed2.Add(chatLogMessage);
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1502,9 +1443,7 @@ namespace Rechievement.Patches
         }
         public static void TavernKeeperDetectRoleblock(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1537,9 +1476,7 @@ namespace Rechievement.Patches
         }
         public static void TrackerDetectVisitSelf(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1570,9 +1507,7 @@ namespace Rechievement.Patches
         }
         public static void TrapperDetectJinx(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1604,9 +1539,7 @@ namespace Rechievement.Patches
         }
         public static void TricksterDetectAbsorbedVigilante(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1644,9 +1577,7 @@ namespace Rechievement.Patches
 
         public static void VeteranCheckIfCalledTPLO(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (Service.Game.Sim.simulation.observations.gameInfo.Data.playPhase != PlayPhase.FIRST_DISCUSSION)
                 return;
             ChatLogChatMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogChatMessageEntry;
@@ -1671,9 +1602,7 @@ namespace Rechievement.Patches
 
         public static void VeteranAlertPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -1684,9 +1613,7 @@ namespace Rechievement.Patches
 
         public static void VeteranDetectShotVisitor(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1726,9 +1653,7 @@ namespace Rechievement.Patches
         }
         public static void VigilanteDetectDefense(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1763,9 +1688,7 @@ namespace Rechievement.Patches
         }
         public static void ConjurerTargetingPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -1794,9 +1717,7 @@ namespace Rechievement.Patches
         }
         public static void ConjurerDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (Utils.IsBTOS2() && chatLog.killRecord.isDay && (int)chatLog.killRecord.playerId == (int)necessities.GetValue("Conjurer Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.CONJURER_ATTACKED) && chatLog.killRecord.playerRole == BToS2Roles.Jackal && currentFaction != BToS2Factions.Jackal)
             {
@@ -1826,9 +1747,7 @@ namespace Rechievement.Patches
         }
         public static void CovenLeaderDetectRetrain(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -1918,9 +1837,7 @@ namespace Rechievement.Patches
         }
         public static void EnchanterAlteratingPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -1932,9 +1849,7 @@ namespace Rechievement.Patches
         }
         public static void EnchanterDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target"))
             {
@@ -2055,9 +1970,7 @@ namespace Rechievement.Patches
         }
         public static void IllusionistDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target"))
             {
@@ -2088,9 +2001,7 @@ namespace Rechievement.Patches
         }
         public static void JinxDetectAttack(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2100,9 +2011,7 @@ namespace Rechievement.Patches
         }
         public static void JinxDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.killedByReasons.Contains(KilledByReason.JINX_ATTACKED))
                 necessities.SetValue("Jinxed", false);
@@ -2136,9 +2045,7 @@ namespace Rechievement.Patches
         }
         public static void MedusaDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.playerRole == Role.STONED && chatLog.killRecord.hiddenPlayerRole.IsCovenAligned())
             {
@@ -2169,9 +2076,7 @@ namespace Rechievement.Patches
         }
         public static void NecromancerDetectFamine(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2207,9 +2112,7 @@ namespace Rechievement.Patches
         }
         public static void PoisonerSmogPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -2239,9 +2142,7 @@ namespace Rechievement.Patches
         }
         public static void PoisonerDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && !(bool)necessities.GetValue("Smog", false) && (chatLog.killRecord.hiddenPlayerRole == Role.VETERAN || chatLog.killRecord.playerRole == Role.VETERAN && (chatLog.killRecord.hiddenPlayerRole == Role.NONE || chatLog.killRecord.hiddenPlayerRole == Role.HIDDEN)))
             {
@@ -2270,9 +2171,7 @@ namespace Rechievement.Patches
         }
         public static void PotionMasterDetectPariah(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2310,9 +2209,7 @@ namespace Rechievement.Patches
         }
         public static void RitualistDetectRitual(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2349,9 +2246,7 @@ namespace Rechievement.Patches
         }
         public static void RitualistDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.killedByReasons.Contains(KilledByReason.RITUALIST_ATTACKED))
             {
@@ -2412,9 +2307,7 @@ namespace Rechievement.Patches
         }
         public static void VoodooMasterProposalMessagePatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2474,9 +2367,9 @@ namespace Rechievement.Patches
         }
         public static void WildlingCountWhispers(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
+            if (processed2.Contains(chatLogMessage))
                 return;
-            processed.Add(chatLogMessage);
+            processed2.Add(chatLogMessage);
             if (chatLogMessage.chatLogEntry.type == ChatType.WHISPER)
             {
                 ChatLogWhisperMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhisperMessageEntry;
@@ -2516,9 +2409,7 @@ namespace Rechievement.Patches
         }
         public static void WitchControlHandler(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2568,9 +2459,7 @@ namespace Rechievement.Patches
         }
         public static void ArsonistIgnitePatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -2582,9 +2471,7 @@ namespace Rechievement.Patches
         }
         public static void ArsonistCheckAchievements(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2637,9 +2524,7 @@ namespace Rechievement.Patches
         }
         public static void BakerDetectPariah(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2690,9 +2575,7 @@ namespace Rechievement.Patches
         }
         public static void BerserkerDetectMonarchDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.playerRole == Role.MONARCH && chatLog.killRecord.killedByReasons.Contains(KilledByReason.BERSERKER_ATTACKED))
             {
@@ -2741,9 +2624,9 @@ namespace Rechievement.Patches
         }
         public static void DoomsayerTargetingPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
+            if (processed2.Contains(chatLogMessage))
                 return;
-            processed.Add(chatLogMessage);
+            processed2.Add(chatLogMessage);
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -2783,9 +2666,7 @@ namespace Rechievement.Patches
         }
         public static void DoomsayerDetectDooms(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2888,9 +2769,7 @@ namespace Rechievement.Patches
         }
         public static void ExecutionerDetectHorribleGameDesign(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2948,9 +2827,7 @@ namespace Rechievement.Patches
         }
         public static void JesterDetectHanged(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TRIAL_VERDICT)
             {
                 ChatLogTrialVerdictEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTrialVerdictEntry;
@@ -2961,9 +2838,7 @@ namespace Rechievement.Patches
         public static void JesterResetSilenced() => necessities.SetValue("Silenced", false);
         public static void JesterCheckAchievements(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -2972,13 +2847,13 @@ namespace Rechievement.Patches
                 else if (chatLog.messageId == GameFeedbackMessage.HANGED_JESTER && (bool)necessities.GetValue("Silenced", false))
                 {
                     RechievementData rechievement;
-                    if (!RechievementData.allRechievements.TryGetValue("Horrible Game Design", out rechievement))
+                    if (!RechievementData.allRechievements.TryGetValue("Twisted Charades", out rechievement))
                     {
                         rechievement = new RechievementData
                         {
-                            Name = "Horrible Game Design",
-                            Sprite = Utils.GetRoleSprite(Role.EXECUTIONER),
-                            Description = "Turn into a Jester",
+                            Name = "Twisted Charades",
+                            Sprite = Utils.GetRoleSprite(Role.JESTER),
+                            Description = "Win while Silenced",
                             Vanilla = true,
                             BToS2 = true
                         };
@@ -3005,9 +2880,7 @@ namespace Rechievement.Patches
         }
         public static void PirateDetectLandlubbers(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -3054,9 +2927,7 @@ namespace Rechievement.Patches
         }
         public static void PirateDetectDefense(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -3081,9 +2952,7 @@ namespace Rechievement.Patches
         }
         public static void PirateSpeak(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogChatMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogChatMessageEntry;
             if (Service.Game.Sim.simulation.observations.daytime.Data.daytimeType == DaytimeType.NIGHT)
             {
@@ -3123,9 +2992,7 @@ namespace Rechievement.Patches
         }
         public static void PlaguebearerDetectTransform(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -3167,9 +3034,9 @@ namespace Rechievement.Patches
         }
         public static void SerialKillerDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
+            if (processed2.Contains(chatLogMessage))
                 return;
-            processed.Add(chatLogMessage);
+            processed2.Add(chatLogMessage);
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if ((int)necessities.GetValue("Evils Killed", 0) != -1 && chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.SERIALKILLER_ATTACKED))
             {
@@ -3265,9 +3132,7 @@ namespace Rechievement.Patches
         }
         public static void SerialKillerDetectDisguise(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -3293,9 +3158,7 @@ namespace Rechievement.Patches
         }
         public static void ShroudDetectShroudedVisit(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -3305,9 +3168,7 @@ namespace Rechievement.Patches
         }
         public static void ShroudDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.SHROUD_ATTACKED) && chatLog.killRecord.killedByReasons.Count > 1)
             {
@@ -3352,9 +3213,7 @@ namespace Rechievement.Patches
         }
         public static void SoulCollectorDetectDeputyShot(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
             if (chatLog.killRecord.isDay && Service.Game.Sim.simulation.observations.playerEffects[(int)chatLog.killRecord.playerId].Data.effects.Contains(EffectType.REAPED) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT) && chatLog.killRecord.playerRole.IsTownAligned() && chatLog.killRecord.playerFaction == FactionType.TOWN)
             {
@@ -3382,9 +3241,7 @@ namespace Rechievement.Patches
         }
         public static void WerewolfDetectUnknownObstacle(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -3444,9 +3301,7 @@ namespace Rechievement.Patches
         }
         public static void VampireConvertPatch(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
             {
                 ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
@@ -3495,9 +3350,7 @@ namespace Rechievement.Patches
         }
         public static void CursedSoulDetectSwap(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -3556,9 +3409,7 @@ namespace Rechievement.Patches
         }
         public static void BansheeDetectDeafenedHanged(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TRIAL_VERDICT)
             {
                 ChatLogTrialVerdictEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTrialVerdictEntry;
@@ -3621,9 +3472,7 @@ namespace Rechievement.Patches
         }
         public static void JackalDetectRecruits(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -3666,9 +3515,7 @@ namespace Rechievement.Patches
         }
         public static void MarshalDetectJackalHangTribunal(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
             {
                 ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
@@ -3707,9 +3554,7 @@ namespace Rechievement.Patches
         }
         public static void JudgeDetectCourtAndProsecutor(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -3774,9 +3619,7 @@ namespace Rechievement.Patches
         }
         public static void JudgeDetectCourtHang(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
             {
                 ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
@@ -3877,9 +3720,7 @@ namespace Rechievement.Patches
         }
         public static void InquisitorCheckAchievements(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -3921,9 +3762,7 @@ namespace Rechievement.Patches
         }
         public static void InquisitorDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
             {
                 ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
@@ -3981,9 +3820,7 @@ namespace Rechievement.Patches
         }
         public static void StarspawnDetectStarbound(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -4012,9 +3849,7 @@ namespace Rechievement.Patches
         }
         public static void StarspawnDetectTargetDeath(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
             {
                 ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
@@ -4049,9 +3884,9 @@ namespace Rechievement.Patches
         }
         public static void WarlockDetectCurse(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
+            if (processed2.Contains(chatLogMessage))
                 return;
-            processed.Add(chatLogMessage);
+            processed2.Add(chatLogMessage);
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -4106,9 +3941,7 @@ namespace Rechievement.Patches
         }
         public static void TownDetectTTHangedD2(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
             {
                 ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
@@ -4256,9 +4089,7 @@ namespace Rechievement.Patches
         }
         public static void ApocalypseDetectApocalypse(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -4336,9 +4167,7 @@ namespace Rechievement.Patches
         // Neutral Evil
         public static void NeutralEvilDetectLeave(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -4593,9 +4422,7 @@ namespace Rechievement.Patches
 
         public static void CheckIfSaidWagaBabaBobo(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogChatMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogChatMessageEntry;
             if (Service.Game.Sim.simulation.observations.roleAlteringEffectsObservation.Data.bIsJailing || Service.Game.Sim.simulation.observations.roleAlteringEffectsObservation.Data.bIsJailed)
             {
@@ -4645,6 +4472,9 @@ namespace Rechievement.Patches
         public static Role currentRole = Role.NONE;
         public static FactionType currentFaction = FactionType.NONE;
         public static List<ChatLogMessage> processed = new List<ChatLogMessage>();
+        public static List<ChatLogMessage> processed2 = new List<ChatLogMessage>();
+        public static List<ChatLogMessage> processed3 = new List<ChatLogMessage>();
+        public static List<ChatLogMessage> processed4 = new List<ChatLogMessage>();
         // Revolution
         public static IEnumerator Revolution()
         {
@@ -4656,9 +4486,7 @@ namespace Rechievement.Patches
         }
         public static void RevolutionMarshalHanged(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.TRIAL_VERDICT)
             {
                 ChatLogTrialVerdictEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTrialVerdictEntry;
@@ -4697,9 +4525,9 @@ namespace Rechievement.Patches
         }
         public static void LifeIsUOCount(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
+            if (processed3.Contains(chatLogMessage))
                 return;
-            processed.Add(chatLogMessage);
+            processed3.Add(chatLogMessage);
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -4737,9 +4565,9 @@ namespace Rechievement.Patches
         }
         public static void DangerCheckRevealedVeteran(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
+            if (processed4.Contains(chatLogMessage))
                 return;
-            processed.Add(chatLogMessage);
+            processed4.Add(chatLogMessage);
             if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
             {
                 ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
@@ -4776,9 +4604,7 @@ namespace Rechievement.Patches
         }
         public static void CheckIfSaidWhyMe(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             ChatLogChatMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogChatMessageEntry;
             if (chatLog.speakerId == Service.Game.Sim.simulation.myPosition && Service.Game.Sim.simulation.trialData.Data.defendantPosition == Service.Game.Sim.simulation.myPosition && chatLog.message.ToLower().Contains("why me"))
             {
@@ -4806,9 +4632,7 @@ namespace Rechievement.Patches
         }
         public static void DetectLJudge(ChatLogMessage chatLogMessage)
         {
-            if (processed.Contains(chatLogMessage))
-                return;
-            processed.Add(chatLogMessage);
+            
             if (chatLogMessage.chatLogEntry.type == ChatType.WHO_DIED)
             {
                 ChatLogWhoDiedEntry chatLog = chatLogMessage.chatLogEntry as ChatLogWhoDiedEntry;
