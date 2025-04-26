@@ -153,7 +153,7 @@ namespace Rechievement.Patches
             { Role.WEREWOLF, Werewolf },
             // Main Specials
             { Role.VAMPIRE, Vampire },
-            { Role.CONJURER, Conjurer },
+            { Role.CURSED_SOUL, CursedSoul },
             // Outliers
             { Role.SOCIALITE, SocialiteOrBanshee }, // Socialite (Vanilla) or Banshee (BToS2)
             { Role.MARSHAL, MarshalOrJackal }, // Marshal (Vanilla) or Jackal (BToS2)
@@ -4134,8 +4134,10 @@ namespace Rechievement.Patches
         // Coven
         public static IEnumerator Coven()
         {
-            necessities.SetValue("Town Traitor", -1);
-            necessities.SetValue("Town Traitor 2", -1);
+            if (necessities.GetValue("Town Traitor", null) == null)
+                necessities.SetValue("Town Traitor", -1);
+            if (necessities.GetValue("Town Traitor 2", null) == null)
+                necessities.SetValue("Town Traitor 2", -1);
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectTownTraitor));
             NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(CovenFactionWinPatch));
             if (currentRole.IsTownAligned() && Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber < 2)
@@ -4221,13 +4223,16 @@ namespace Rechievement.Patches
         // Apocalypse
         public static IEnumerator Apocalypse()
         {
-            necessities.SetValue("InvalidApoc", false);
+            if (necessities.GetValue("InvalidApoc", null) == null)
+                necessities.SetValue("InvalidApoc", false);
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(ApocalypseDetectApocalypse));
             NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(ApocalypseFactionWinPatch));
             if (Utils.IsBTOS2())
             {
-                necessities.SetValue("Town Traitor", -1);
-                necessities.SetValue("Town Traitor 2", -1);
+                if (necessities.GetValue("Town Traitor", null) == null)
+                    necessities.SetValue("Town Traitor", -1);
+                if (necessities.GetValue("Town Traitor 2", null) == null)
+                    necessities.SetValue("Town Traitor 2", -1);
                 NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectTownTraitor));
                 if (currentRole.IsTownAligned() && Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber < 2)
                 {
@@ -4455,8 +4460,10 @@ namespace Rechievement.Patches
         // Pandora
         public static IEnumerator Pandora()
         {
-            necessities.SetValue("Town Traitor", -1);
-            necessities.SetValue("Town Traitor 2", -1);
+            if (necessities.GetValue("Town Traitor", null) == null)
+                necessities.SetValue("Town Traitor", -1);
+            if (necessities.GetValue("Town Traitor 2", null) == null)
+                necessities.SetValue("Town Traitor 2", -1);
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralDetectTownTraitor));
             NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(PandoraFactionWinPatch));
             if (currentRole.IsTownAligned() && Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber < 2)
@@ -4641,7 +4648,8 @@ namespace Rechievement.Patches
         // Revolution
         public static IEnumerator Revolution()
         {
-            necessities.SetValue("Revolution", false);
+            if (necessities.GetValue("Revolution", null) == null)
+                necessities.SetValue("Revolution", false);
             NewPostfix(typeof(TrialVerdictDecoder), nameof(TrialVerdictDecoder.Encode), nameof(RevolutionMarshalHanged));
             NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(RevolutionFactionWinPatch));
             yield break;
@@ -4682,7 +4690,8 @@ namespace Rechievement.Patches
         // My Life is an Unknown Obstacle
         public static IEnumerator MyLifeIsAnUnknownObstacle()
         {
-            necessities.SetValue("UOCount", 0);
+            if (necessities.GetValue("UOCount", null) == null)
+                necessities.SetValue("UOCount", 0);
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(LifeIsUOCount));
             yield break;
         }
