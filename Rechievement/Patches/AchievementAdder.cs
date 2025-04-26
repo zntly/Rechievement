@@ -40,7 +40,6 @@ namespace Rechievement.Patches
                 currentFaction = faction;
                 Func<IEnumerator> roleCoroutine;
                 Func<IEnumerator> factionCoroutine;
-                Debug.LogWarning(role);
                 if (allRoleCoroutines.TryGetValue(role, out roleCoroutine))
                     StartCoroutine(roleCoroutine.Invoke());
                 if (allFactionCoroutines.TryGetValue(faction, out factionCoroutine))
@@ -143,7 +142,19 @@ namespace Rechievement.Patches
             { Role.BERSERKER, Berserker },
             { Role.DOOMSAYER, Doomsayer },
             { Role.EXECUTIONER, Executioner },
-            { Role.JESTER, Jester }
+            { Role.JESTER, Jester },
+            { Role.PIRATE, Pirate },
+            { Role.PLAGUEBEARER, Plaguebearer },
+            { Role.SERIALKILLER, SerialKiller },
+            { Role.SHROUD, Shroud },
+            { Role.SOULCOLLECTOR, SoulCollector },
+            { Role.WEREWOLF, Werewolf },
+            // Main Specials
+            { Role.VAMPIRE, Vampire },
+            { Role.CONJURER, Conjurer },
+            // Outliers
+            { Role.SOCIALITE, SocialiteOrBanshee }, // Socialite (Vanilla) or Banshee (BToS2)
+            { Role.MARSHAL, MarshalOrJackal } // Marshal (Vanilla) or Jackal (BToS2)
         };
 
         public static Dictionary<FactionType, Func<IEnumerator>> allFactionCoroutines = new Dictionary<FactionType, Func<IEnumerator>>
@@ -350,7 +361,7 @@ namespace Rechievement.Patches
 
         public static void AdmirerFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
         {
-            if (__instance.cinematicData.winningFaction == Service.Game.Sim.simulation.myIdentity.Data.faction)
+            if (__instance.cinematicData.winningFaction == currentFaction)
             {
                 RechievementData rechievement;
                 if (!RechievementData.allRechievements.TryGetValue("Written in the Stars", out rechievement))
@@ -372,14 +383,12 @@ namespace Rechievement.Patches
         // Amnesiac
         public static IEnumerator Amnesiac()
         {
-            Debug.LogWarning("AMNE ------------------");
             NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(AmnesiacFactionWinPatch));
             yield break;
         }
         public static void AmnesiacFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
         {
-            Debug.LogWarning(__instance.cinematicData.winningFaction == Service.Game.Sim.simulation.myIdentity.Data.faction);
-            if (Service.Game.Sim.simulation.myIdentity.Data.role == Role.AMNESIAC && __instance.cinematicData.winningFaction == Service.Game.Sim.simulation.myIdentity.Data.faction)
+            if (currentRole == Role.AMNESIAC && __instance.cinematicData.winningFaction == currentFaction)
             {
                 RechievementData rechievement;
                 if (!RechievementData.allRechievements.TryGetValue("What Happened?", out rechievement))
@@ -401,7 +410,6 @@ namespace Rechievement.Patches
         // Bodyguard
         public static IEnumerator Bodyguard()
         {
-            Debug.LogWarning("BG -------------------------");
             NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
             NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
             NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(BodyguardDetectTargetDeath));
@@ -1386,7 +1394,7 @@ namespace Rechievement.Patches
                         rechievement = new RechievementData
                         {
                             Name = "Hippity Hoppity",
-                            Sprite = Utils.GetRoleSprite(Role.VIGILANTE),
+                            Sprite = Utils.GetRoleSprite(Role.TRICKSTER),
                             Description = "Absorb a Vigilante’s Attack",
                             Vanilla = true,
                             BToS2 = true
@@ -2748,7 +2756,629 @@ namespace Rechievement.Patches
             }
         }
         // Pirate
-
+        public static IEnumerator Pirate()
+        {
+            if (!Utils.IsBTOS2())
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(PirateDetectLandlubbers));
+            else
+                NewPostfix(typeof(ChatDecoder), nameof(ChatDecoder.Encode), nameof(PirateSpeak));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(PirateDetectDefense));
+            yield break;
+        }
+        public static void PirateDetectLandlubbers(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.LANDLUBBERS_ARE_X_Y_Z)
+                {
+                    List<Role> landlubbers = new List<Role> { chatLog.role1, chatLog.role2, chatLog.role3 };
+                    Role townLL = Role.NONE;
+                    Role covenLL = Role.NONE;
+                    Role apocLL = Role.NONE;
+                    foreach (Role landlubber in landlubbers)
+                        if (landlubber.IsTownAligned())
+                            townLL = landlubber;
+                    if (townLL != Role.NONE)
+                        landlubbers.Remove(townLL);
+                    foreach (Role landlubber in landlubbers)
+                        if (landlubber.IsCovenAligned())
+                            covenLL = landlubber;
+                    if (covenLL != Role.NONE)
+                        landlubbers.Remove(covenLL);
+                    foreach (Role landlubber in landlubbers)
+                        if (landlubber.GetSubAlignment() == SubAlignment.APOCALYPSE)
+                            apocLL = landlubber;
+                    if (apocLL != Role.NONE)
+                        landlubbers.Remove(apocLL);
+                    if (landlubbers.Count == 0)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Staying Neutral", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Horrible Game Design",
+                                Sprite = Utils.GetRoleSprite(Role.PIRATE),
+                                Description = "Have a Town, Coven, and Apocalypse role as your landlubbers",
+                                Vanilla = true,
+                                BToS2 = false
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        public static void PirateDetectDefense(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.DEFENSE_STRONGER_THAN_ATTACK)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Blow Me Down!", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Blow Me Down!",
+                            Sprite = Utils.GetRoleSprite(Role.PIRATE),
+                            Description = "Attack someone with defense",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        public static void PirateSpeak(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            ChatLogChatMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogChatMessageEntry;
+            if (Service.Game.Sim.simulation.observations.daytime.Data.daytimeType == DaytimeType.NIGHT)
+            {
+                if (chatLog.speakerId == 71)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Avast Ye!", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Avast Ye!",
+                            Sprite = Utils.GetRoleSprite(Role.PIRATE),
+                            Description = "Speak to your target at night",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        // Plaguebearer
+        public static IEnumerator Plaguebearer()
+        {
+            necessities.SetValue("Eligible", false);
+            NewPostfix(typeof(GameSimulation), nameof(GameSimulation.HandleOnGameInfoChanged), nameof(PlaguebearerChangeEligibility));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(PlaguebearerDetectTransform));
+            yield break;
+        }
+        public static void PlaguebearerChangeEligibility(GameInfo gameInfo)
+        {
+            if (gameInfo.gamePhase == GamePhase.PLAY && gameInfo.playPhase == PlayPhase.DISCUSSION)
+                necessities.SetValue("Eligible", true);
+            else if (gameInfo.gamePhase == GamePhase.PLAY && gameInfo.playPhase == PlayPhase.NIGHT)
+                necessities.SetValue("Eligible", false);
+        }
+        public static void PlaguebearerDetectTransform(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.PESTILENCE_HAS_EMERGED && (bool)necessities.GetValue("Eligible", false))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Were You Surprised?", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Were You Surprised?",
+                            Sprite = Utils.GetRoleSprite(Role.PLAGUEBEARER),
+                            Description = "Transform in the middle of the day",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        // Serial Killer
+        public static IEnumerator SerialKiller()
+        {
+            necessities.SetValue("Evils Killed", 0);
+            necessities.SetValue("Current Target", -1);
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(SerialKillerDetectTargetDeath));
+            if (Utils.IsBTOS2())
+            {
+                necessities.SetValue("Disguise", false);
+                necessities.SetValue("Player", Service.Game.Sim.simulation.myPosition);
+                NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(SerialKillerDetectDisguise));
+                NewPostfix(typeof(GameSimulation), nameof(GameSimulation.HandleOnGameInfoChanged), nameof(SerialKillerUpdatePlayer));
+            }
+            yield break;
+        }
+        public static void SerialKillerDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if ((int)necessities.GetValue("Evils Killed", 0) != -1 && chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.SERIALKILLER_ATTACKED))
+            {
+                int evilsKilled = (int)necessities.GetValue("Evils Killed", 0);
+                if (chatLog.killRecord.playerRole.IsTownAligned())
+                    evilsKilled = -1;
+                else
+                    evilsKilled += 1;
+                if (evilsKilled >= 2)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Blue Vigilante", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Blue Vigilante",
+                            Sprite = Utils.GetRoleSprite(Role.SERIALKILLER),
+                            Description = "Kill two evils before killing any townies",
+                            Vanilla = true,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+                necessities.SetValue("Evils Killed", evilsKilled);
+            }
+            if (Utils.IsBTOS2() && (bool)necessities.GetValue("Disguise", false) && chatLog.killRecord.playerId == (int)necessities.GetValue("Player", -1) && (int)necessities.GetValue("Player", -1) != Service.Game.Sim.simulation.myPosition)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Skinwalker", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Skinwalker",
+                        Sprite = Utils.GetRoleSprite(Role.SERIALKILLER),
+                        Description = "Successfully disguise as another player",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+                if (chatLog.killRecord.hiddenPlayerRole.IsCovenAligned())
+                {
+                    if (!RechievementData.allRechievements.TryGetValue("Busted Disguise", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Busted Disguise",
+                            Sprite = Utils.GetRoleSprite(Role.SERIALKILLER),
+                            Description = "Jump into a Coven member's body",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+                if (chatLog.killRecord.playerRole == Role.JESTER)
+                {
+                    if (!RechievementData.allRechievements.TryGetValue("All Smiles", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "All Smiles",
+                            Sprite = Utils.GetRoleSprite(Role.SERIALKILLER),
+                            Description = "Disguise as a Jester",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+                else if (chatLog.killRecord.playerRole == BToS2Roles.Jackal)
+                {
+                    if (!RechievementData.allRechievements.TryGetValue("Code Blue", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Code Blue",
+                            Sprite = Utils.GetRoleSprite(Role.SERIALKILLER),
+                            Description = "Disguise as a Jackal",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        public static void SerialKillerDetectDisguise(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
+            {
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.SpecialAbility)
+                    necessities.SetValue("Disguise", !chatLog.bIsCancel);
+            }
+        }
+        public static void SerialKillerUpdatePlayer(GameInfo gameInfo)
+        {
+            if (gameInfo.gamePhase == GamePhase.PLAY && gameInfo.playPhase == PlayPhase.DISCUSSION)
+            {
+                necessities.SetValue("Disguise", false);
+                necessities.SetValue("Player", Service.Game.Sim.simulation.myPosition);
+            }
+        }
+        // Shroud
+        public static IEnumerator Shroud()
+        {
+            necessities.SetValue("Current Target", -1);
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(ShroudDetectShroudedVisit));
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(ShroudDetectTargetDeath));
+            yield break;
+        }
+        public static void ShroudDetectShroudedVisit(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.SHROUD_SHROUDED_ATTACKED_PLAYER)
+                    necessities.SetValue("Current Target", chatLog.playerNumber1);
+            }
+        }
+        public static void ShroudDetectTargetDeath(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.SHROUD_ATTACKED) && chatLog.killRecord.killedByReasons.Count > 1)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Spooky Secrets", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Spooky Secretse",
+                        Sprite = Utils.GetRoleSprite(Role.SHROUD),
+                        Description = "Compel your shrouded target to attack a player that was already dying",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+            if (Utils.IsBTOS2() && chatLog.killRecord.playerFaction == BToS2Factions.Compliance && chatLog.killRecord.playerId != Service.Game.Sim.simulation.myPosition && currentFaction == BToS2Factions.Compliance)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Downright Ghastly", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Downright Ghastly",
+                        Sprite = Utils.GetRoleSprite(Role.SHROUD),
+                        Description = "Kill your own Compliance teammate",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Soul Collector
+        public static IEnumerator SoulCollector()
+        {
+            NewPostfix(typeof(WhoDiedDecoder), nameof(WhoDiedDecoder.Encode), nameof(SoulCollectorDetectDeputyShot));
+            yield break;
+        }
+        public static void SoulCollectorDetectDeputyShot(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            ChatLogWhoDiedEntry chatLog = (ChatLogWhoDiedEntry)chatLogMessage.chatLogEntry;
+            if (chatLog.killRecord.isDay && Service.Game.Sim.simulation.observations.playerEffects[(int)chatLog.killRecord.playerId].Data.effects.Contains(EffectType.REAPED) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.DEPUTY_SHOT) && chatLog.killRecord.playerRole.IsTownAligned() && chatLog.killRecord.playerFaction == FactionType.TOWN)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Rowdy Reaper", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Rowdy Reaper",
+                        Sprite = Utils.GetRoleSprite(Role.SOULCOLLECTOR),
+                        Description = "Collect the soul of a Town-aligned player that was shot by a Deputy",
+                        Vanilla = true,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Werewolf
+        public static IEnumerator Werewolf()
+        {
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(WerewolfDetectUnknownObstacle));
+            yield break;
+        }
+        public static void WerewolfDetectUnknownObstacle(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.ABILITY_FAILED_DUE_TO_AN_UNKNOWN_OBSTACLE || Utils.IsBTOS2() && chatLog.messageId == (GameFeedbackMessage)1100)
+                {
+                    int nightNumber = Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber;
+                    if (nightNumber == 2 || nightNumber >= 4)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Down Doggy", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Down Doggy",
+                                Sprite = Utils.GetRoleSprite(Role.WEREWOLF),
+                                Description = "See an Unknown Obstacle on a full moon",
+                                Vanilla = true,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        // Vampire
+        public static IEnumerator Vampire()
+        {
+            if (Utils.IsBTOS2())
+            {
+                necessities.SetValue("Current Target", -1);
+                necessities.SetValue("Convert", false);
+                NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
+                NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(VampireConvertPatch));
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(VampireDetectConvert));
+            }
+            yield break;
+        }
+        public static void VampireConvertPatch(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.TARGET_SELECTION)
+            {
+                ChatLogTargetSelectionFeedbackEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTargetSelectionFeedbackEntry;
+                if (chatLog.menuChoiceType == MenuChoiceType.SpecialAbility)
+                    necessities.SetValue("Convert", !chatLog.bIsCancel);
+            }
+        }
+        public static void VampireDetectConvert()
+        {
+            if ((bool)necessities.GetValue("Convert", false) && (int)necessities.GetValue("Current Target", -1) != -1)
+            {
+                Tuple<Role, FactionType> tuple;
+                if (Service.Game.Sim.simulation.knownRolesAndFactions.Data.TryGetValue((int)necessities.GetValue("Current Target", -1), out tuple))
+                {
+                    Role convertRole = tuple.Item1;
+                    FactionType convertFaction = tuple.Item2;
+                    if (convertRole.IsTownAligned() && convertRole.GetSubAlignment() == SubAlignment.POWER && convertFaction == FactionType.VAMPIRE)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Blood Bank", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Blood Bank",
+                                Sprite = Utils.GetRoleSprite(Role.VAMPIRE),
+                                Description = "Convert a Town Power",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        // Cursed Soul
+        public static IEnumerator CursedSoul()
+        {
+            if (Utils.IsBTOS2())
+            {
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(CursedSoulDetectSwap));
+            }
+            yield break;
+        }
+        public static void CursedSoulDetectSwap(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.YOU_SWAPPED_SOULS_WITH_A_PLAYER)
+                {
+                    if (Service.Game.Sim.simulation.myIdentity.Data.role == Role.CONJURER && Service.Game.Sim.simulation.observations.roleCardObservation.Data.specialAbilityRemaining == 0)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("I'll Take That, It's Mine Now", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "I'll Take That, It's Mine Now",
+                                Sprite = Utils.GetRoleSprite(Role.CURSED_SOUL),
+                                Description = "Swap with a Conjurer that still has a charge",
+                                Vanilla = false,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    }
+                }
+            }
+        }
+        // Socialite or Banshee
+        public static IEnumerator SocialiteOrBanshee()
+        {
+            if (!Utils.IsBTOS2())
+            {
+                // Socialite (Vanilla)
+                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(SocialiteCheckGuestList));
+                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToNight), nameof(SocialiteCheckGuestList));
+            } else
+            {
+                // Banshee (BToS2)
+                NewPostfix(typeof(TrialVerdictDecoder), nameof(TrialVerdictDecoder.Encode), nameof(BansheeDetectDeafenedHanged));
+            }
+            yield break;
+        }
+        public static void BansheeDetectDeafenedHanged(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.TRIAL_VERDICT)
+            {
+                ChatLogTrialVerdictEntry chatLog = chatLogMessage.chatLogEntry as ChatLogTrialVerdictEntry;
+                if (Utils.CourtCheck() && chatLog.trialVerdict == TrialVerdict.GUILTY && Service.Game.Sim.simulation.observations.playerEffects[chatLog.defendantPosition].Data.effects.Contains((EffectType)101))
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Corrupt and Unhearing Court", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Corrupt and Unhearing Court",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.Banshee),
+                            Description = "Hang a Deafened player during Court",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+        public static void SocialiteCheckGuestList()
+        {
+            bool allOnList = true;
+            foreach (DiscussionPlayerObservation discussionPlayer in Service.Game.Sim.simulation.observations.discussionPlayers)
+                if (discussionPlayer.Data.position != Service.Game.Sim.simulation.myPosition && discussionPlayer.Data.alive && !Service.Game.Sim.simulation.observations.playerEffects[discussionPlayer.Data.position].Data.effects.Contains(EffectType.SOCIALITE_GUEST))
+                    allOnList = false;
+            if (allOnList)
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Public Party", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Public Party",
+                        Sprite = Utils.GetRoleSprite(Role.SOCIALITE),
+                        Description = "Have every alive player on your Guest List",
+                        Vanilla = true,
+                        BToS2 = false
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
+        // Marshal or Jackal
+        public static IEnumerator MarshalOrJackal()
+        {
+            if (!Utils.IsBTOS2())
+            {
+                // Marshal (Vanilla) - No Vanilla Marshal achievements
+            } else {
+                // Jackal (BToS2)
+                necessities.SetValue("Recruits", false);
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(JackalDetectRecruits));
+                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToNight), nameof(JackalDetectNotRecruits));
+            }
+            yield break;
+        }
+        public static void JackalDetectRecruits(ChatLogMessage chatLogMessage)
+        {
+            if (processed.Contains(chatLogMessage))
+                return;
+            processed.Add(chatLogMessage);
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == (GameFeedbackMessage)1000)
+                    necessities.SetValue("Recruits", true);
+            }
+        }
+        public static void JackalDetectNotRecruits()
+        {
+            if (!(bool)necessities.GetValue("Recruits", false))
+            {
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Lone Wolf", out rechievement))
+                {
+                    rechievement = new RechievementData
+                    {
+                        Name = "Lone Wolf",
+                        Sprite = Utils.GetRoleSprite(BToS2Roles.Jackal),
+                        Description = "Spawn without Recruits",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                }
+                rechievement.ShowRechievement();
+            }
+        }
         // Faction Coroutines
         // Coven
         public static IEnumerator Coven()
