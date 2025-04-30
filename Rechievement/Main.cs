@@ -6,6 +6,12 @@ using System.Reflection;
 using Server.Shared.Extensions;
 using SalemModLoaderUI;
 using UnityEngine.UIElements;
+using Home.Shared;
+using Services;
+using UnityEngine.SceneManagement;
+using static XMLShop;
+using System.Diagnostics;
+using Rechievement.Patches;
 
 namespace Rechievement
 {
@@ -30,8 +36,18 @@ namespace Rechievement
                 if (audio.name == "AchievementGet")
                     Utils.AchievementGet = audio;
             });
-            //if (assetBundleFromResources != null)
-            //    assetBundleFromResources.Unload(false);
+            Service.Home.ApplicationService.OnSceneLoaded += delegate (SceneType sceneType, LoadSceneMode loadSceneMode)
+            {
+                if (Leo.IsHomeScene() || Leo.IsLoginScene())
+                {
+                    AchievementAdder.ClearCoroutines();
+                    AchievementAdder.ClearPatches();
+                    AchievementAdder.IdentityPatch = null;
+                    AchievementAdder.necessities.Clear();
+                    AchievementAdder.shown.Clear();
+                    AchievementAdder.processed.Clear();
+                }
+            };
         }
     }
 }

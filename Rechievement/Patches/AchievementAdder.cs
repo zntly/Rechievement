@@ -2912,7 +2912,7 @@ namespace Rechievement.Patches
                         {
                             rechievement = new RechievementData
                             {
-                                Name = "Horrible Game Design",
+                                Name = "Staying Neutral",
                                 Sprite = Utils.GetRoleSprite(Role.PIRATE),
                                 Description = "Have a Town, Coven, and Apocalypse role as your landlubbers",
                                 Vanilla = true,
@@ -3187,7 +3187,7 @@ namespace Rechievement.Patches
                 }
                 rechievement.ShowRechievement();
             }
-            if (Utils.IsBTOS2() && chatLog.killRecord.playerFaction == BToS2Factions.Compliance && chatLog.killRecord.playerId != Service.Game.Sim.simulation.myPosition && currentFaction == BToS2Factions.Compliance)
+            if (Utils.IsBTOS2() && chatLog.killRecord.playerId == (int)necessities.GetValue("Current Target", -1) && chatLog.killRecord.killedByReasons.Contains(KilledByReason.SHROUD_ATTACKED) && chatLog.killRecord.playerFaction == BToS2Factions.Compliance && chatLog.killRecord.playerId != Service.Game.Sim.simulation.myPosition && currentFaction == BToS2Factions.Compliance)
             {
                 RechievementData rechievement;
                 if (!RechievementData.allRechievements.TryGetValue("Downright Ghastly", out rechievement))
@@ -4056,9 +4056,6 @@ namespace Rechievement.Patches
         // Apocalypse
         public static IEnumerator Apocalypse()
         {
-            if (necessities.GetValue("InvalidApoc", null) == null)
-                necessities.SetValue("InvalidApoc", false);
-            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(ApocalypseDetectApocalypse));
             NewPostfix(typeof(FactionWinsStandardCinematicPlayer), nameof(FactionWinsStandardCinematicPlayer.Init), nameof(ApocalypseFactionWinPatch));
             if (Utils.IsBTOS2())
             {
@@ -4087,22 +4084,6 @@ namespace Rechievement.Patches
             }
             yield break;
         }
-        public static void ApocalypseDetectApocalypse(ChatLogMessage chatLogMessage)
-        {
-            
-            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
-            {
-                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
-                if (chatLog.messageId == GameFeedbackMessage.PESTILENCE_HAS_EMERGED)
-                    necessities.SetValue("InvalidApoc", true);
-                else if (chatLog.messageId == GameFeedbackMessage.WAR_HAS_EMERGED)
-                    necessities.SetValue("InvalidApoc", true);
-                else if (chatLog.messageId == GameFeedbackMessage.FAMINE_HAS_EMERGED)
-                    necessities.SetValue("InvalidApoc", true);
-                else if (chatLog.messageId == GameFeedbackMessage.DEATH_HAS_EMERGED || Utils.IsBTOS2() && chatLog.messageId == (GameFeedbackMessage)1097)
-                    necessities.SetValue("InvalidApoc", true);
-            }
-        }
         public static void ApocalypseFactionWinPatch(FactionWinsStandardCinematicPlayer __instance)
         {
             if (__instance.cinematicData.winningFaction == FactionType.APOCALYPSE)
@@ -4111,23 +4092,6 @@ namespace Rechievement.Patches
                 foreach (FactionWinsCinematicData.Entry entry in __instance.cinematicData.entries)
                     if (entry.alive && entry.position != Service.Game.Sim.simulation.myPosition)
                         allDead = false;
-                if (!(bool)necessities.GetValue("InvalidApoc", false))
-                {
-                    RechievementData rechievement;
-                    if (!RechievementData.allRechievements.TryGetValue("Atheist", out rechievement))
-                    {
-                        rechievement = new RechievementData
-                        {
-                            Name = "Atheist",
-                            Sprite = Utils.IsBTOS2() ? Utils.GetRoleSprite(BToS2Roles.RandomApocalypse) : Utils.GetRoleSprite(Role.NEUTRAL_APOCALYPSE),
-                            Description = "Win without any member of the Apocalypse transforming",
-                            Vanilla = true,
-                            BToS2 = true
-                        };
-                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
-                    }
-                    rechievement.ShowRechievement();
-                }
                 if (Utils.IsBTOS2() && allDead && GeneralGetIfTownTraitor(Service.Game.Sim.simulation.myPosition))
                 {
                     RechievementData rechievement;
