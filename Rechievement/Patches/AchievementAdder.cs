@@ -916,9 +916,9 @@ namespace Rechievement.Patches
                 }
             }
         }
-        public static void MayorCheckVotes()
+        public static void MayorCheckVotes(GameInfo gameInfo)
         {
-            if (Service.Game.Sim.simulation.observations.playerVotingObservations.GetElement(Service.Game.Sim.simulation.myPosition).Data.voteWeight >= 5)
+            if (gameInfo.gamePhase == GamePhase.PLAY && gameInfo.playPhase == PlayPhase.DISCUSSION && Service.Game.Sim.simulation.observations.playerVotingObservations.GetElement(Service.Game.Sim.simulation.myPosition).Data.voteWeight >= 5)
             {
                 RechievementData rechievement;
                 if (!RechievementData.allRechievements.TryGetValue("I Love Democracy", out rechievement))
@@ -2980,7 +2980,7 @@ namespace Rechievement.Patches
         {
             necessities.SetValue("Eligible", false);
             NewPostfix(typeof(GameSimulation), nameof(GameSimulation.HandleOnGameInfoChanged), nameof(PlaguebearerChangeEligibility));
-            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(PlaguebearerDetectTransform));
+            NewPostfix(typeof(TransformGameMessageDecoder), nameof(TransformGameMessageDecoder.Encode), nameof(PlaguebearerDetectTransform));
             yield break;
         }
         public static void PlaguebearerChangeEligibility(GameInfo gameInfo)
@@ -3177,7 +3177,7 @@ namespace Rechievement.Patches
                 {
                     rechievement = new RechievementData
                     {
-                        Name = "Spooky Secretse",
+                        Name = "Spooky Secrets",
                         Sprite = Utils.GetRoleSprite(Role.SHROUD),
                         Description = "Compel your shrouded target to attack a player that was already dying",
                         Vanilla = true,
