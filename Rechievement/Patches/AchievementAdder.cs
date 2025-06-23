@@ -151,10 +151,10 @@ namespace Rechievement.Patches
             { Role.SHROUD, Shroud },
             { Role.SOULCOLLECTOR, SoulCollector },
             { Role.WEREWOLF, Werewolf },
-            // Main Specials
+            // Outliers
             { Role.VAMPIRE, Vampire },
             { Role.CURSED_SOUL, CursedSoul },
-            // Outliers
+            // Crossovers
             { Role.SOCIALITE, SocialiteOrBanshee }, // Socialite (Vanilla) or Banshee (BToS2)
             { Role.MARSHAL, MarshalOrJackal }, // Marshal (Vanilla) or Jackal (BToS2)
             { Role.ORACLE, OracleOrMarshal }, // Oracle (Vanilla) or Marshal (BToS2)
@@ -3271,31 +3271,28 @@ namespace Rechievement.Patches
         // Vampire
         public static IEnumerator Vampire()
         {
-            if (Utils.IsBTOS2())
+            necessities.SetValue("Current Target", -1);
+            necessities.SetValue("Convert", false);
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
+            NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(VampireConvertPatch));
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
+            NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(VampireDetectConvert));
+            if (Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber > 1)
             {
-                necessities.SetValue("Current Target", -1);
-                necessities.SetValue("Convert", false);
-                NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(GeneralTargetingPatch));
-                NewPostfix(typeof(TargetSelectionDecoder), nameof(TargetSelectionDecoder.Encode), nameof(VampireConvertPatch));
-                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(GeneralRemoveTargetIfImpededPatch));
-                NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(VampireDetectConvert));
-                if (Service.Game.Sim.simulation.observations.daytime.Data.daynightNumber > 1)
+                RechievementData rechievement;
+                if (!RechievementData.allRechievements.TryGetValue("Honor of Dracula", out rechievement))
                 {
-                    RechievementData rechievement;
-                    if (!RechievementData.allRechievements.TryGetValue("Honor of Dracula", out rechievement))
+                    rechievement = new RechievementData
                     {
-                        rechievement = new RechievementData
-                        {
-                            Name = "Honor of Dracula",
-                            Sprite = Utils.GetRoleSprite(Role.VAMPIRE),
-                            Description = "Get promoted to Vampire",
-                            Vanilla = false,
-                            BToS2 = true
-                        };
-                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
-                    }
-                    rechievement.ShowRechievement();
+                        Name = "Honor of Dracula",
+                        Sprite = Utils.GetRoleSprite(Role.VAMPIRE),
+                        Description = "Get promoted to Vampire",
+                        Vanilla = false,
+                        BToS2 = true
+                    };
+                    RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
                 }
+                rechievement.ShowRechievement();
             }
             yield break;
         }
@@ -3328,7 +3325,7 @@ namespace Rechievement.Patches
                                 Name = "Blood Bank",
                                 Sprite = Utils.GetRoleSprite(Role.VAMPIRE),
                                 Description = "Convert a Town Power",
-                                Vanilla = false,
+                                Vanilla = true,
                                 BToS2 = true
                             };
                             RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
@@ -3342,10 +3339,7 @@ namespace Rechievement.Patches
         // Cursed Soul
         public static IEnumerator CursedSoul()
         {
-            if (Utils.IsBTOS2())
-            {
-                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(CursedSoulDetectSwap));
-            }
+            NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(CursedSoulDetectSwap));
             yield break;
         }
         public static void CursedSoulDetectSwap(ChatLogMessage chatLogMessage)
@@ -3366,7 +3360,7 @@ namespace Rechievement.Patches
                                 Name = "I'll Take That, It's Mine Now",
                                 Sprite = Utils.GetRoleSprite(Role.CURSED_SOUL),
                                 Description = "Swap with a Conjurer that still has a charge",
-                                Vanilla = false,
+                                Vanilla = true,
                                 BToS2 = true
                             };
                             RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
@@ -3380,9 +3374,25 @@ namespace Rechievement.Patches
                             rechievement = new RechievementData
                             {
                                 Name = "Freaky Friday",
-                                Sprite = Utils.GetRoleSprite(BToS2Roles.CommonTown),
+                                Sprite = Utils.IsBTOS2() ? Utils.GetRoleSprite(BToS2Roles.CommonTown) : Utils.GetRoleSprite(Role.COMMON_TOWN),
                                 Description = "Steal an evil role as a Town-aligned Cursed Soul",
-                                Vanilla = false,
+                                Vanilla = true,
+                                BToS2 = true
+                            };
+                            RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                        }
+                        rechievement.ShowRechievement();
+                    } else if (Service.Game.Sim.simulation.myIdentity.Data.role == Role.SOULCOLLECTOR)
+                    {
+                        RechievementData rechievement;
+                        if (!RechievementData.allRechievements.TryGetValue("Can't Collect Me", out rechievement))
+                        {
+                            rechievement = new RechievementData
+                            {
+                                Name = "Can't Collect Me",
+                                Sprite = Utils.GetRoleSprite(Role.CURSED_SOUL),
+                                Description = "Swap with the Soul Collecter",
+                                Vanilla = true,
                                 BToS2 = true
                             };
                             RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
@@ -3655,6 +3665,7 @@ namespace Rechievement.Patches
             if (Utils.IsBTOS2())
             {
                 NewPostfix(typeof(GlobalShaderColors), nameof(GlobalShaderColors.SetToDay), nameof(AuditorCheckAudits));
+                NewPostfix(typeof(GameMessageDecoder), nameof(GameMessageDecoder.Encode), nameof(AuditorDetectTPow));
             }
             yield break;
         }
@@ -3701,6 +3712,31 @@ namespace Rechievement.Patches
                 rechievement.ShowRechievement();
             }
         }
+        public static void AuditorDetectTPow(ChatLogMessage chatLogMessage)
+        {
+            if (chatLogMessage.chatLogEntry.type == ChatType.GAME_MESSAGE)
+            {
+                ChatLogGameMessageEntry chatLog = chatLogMessage.chatLogEntry as ChatLogGameMessageEntry;
+                if (chatLog.messageId == GameFeedbackMessage.TARGET_IS_PROSECUTOR || chatLog.messageId == GameFeedbackMessage.TARGET_IS_MAYOR || chatLog.messageId == GameFeedbackMessage.TARGET_IS_JAILOR || chatLog.messageId == GameFeedbackMessage.TARGET_IS_MONARCH || chatLog.messageId == (GameFeedbackMessage)1018)
+                {
+                    RechievementData rechievement;
+                    if (!RechievementData.allRechievements.TryGetValue("Smokescreen", out rechievement))
+                    {
+                        rechievement = new RechievementData
+                        {
+                            Name = "Smokescreen",
+                            Sprite = Utils.GetRoleSprite(BToS2Roles.Auditor),
+                            Description = "Reveal a Town Power",
+                            Vanilla = false,
+                            BToS2 = true
+                        };
+                        RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
+                    }
+                    rechievement.ShowRechievement();
+                }
+            }
+        }
+
         // Inquisitor
         public static IEnumerator Inquisitor()
         {
@@ -4162,7 +4198,7 @@ namespace Rechievement.Patches
         // Vampire
         public static IEnumerator VampireFaction()
         {
-            if (Utils.IsBTOS2() && currentRole.IsTownAligned())
+            if (currentRole.IsTownAligned())
             {
                 RechievementData rechievement;
                 if (!RechievementData.allRechievements.TryGetValue("Blood Drinker", out rechievement))
@@ -4172,7 +4208,7 @@ namespace Rechievement.Patches
                         Name = "Blood Drinker",
                         Sprite = Utils.GetRoleSprite(Role.VAMPIRE),
                         Description = "Betray the Town and embrace immortality",
-                        Vanilla = false,
+                        Vanilla = true,
                         BToS2 = true
                     };
                     RechievementData.allRechievements.SetValue(rechievement.Name, rechievement);
